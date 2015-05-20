@@ -1,0 +1,15 @@
+{
+  "name": "6brain",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "ants <contact@ants.builders> (http://ants.builders)",
+  "license": "MIT",
+  "dependencies": {
+    "6sense": "0.0.1",
+    "quipu": "0.0.1"
+  }
+}
