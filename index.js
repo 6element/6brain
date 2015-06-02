@@ -7,7 +7,7 @@ var quipu = require("quipu");
 var numbers = require("./numbers.json");
 quipu.handle("initialize", "/dev/ttyUSB0");
 
-sensor.record();
+sensor.record(60);
 
 sensor.on('results', function(results){
         console.log('ready to send SMS');
