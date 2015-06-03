@@ -10,10 +10,10 @@ quipu.handle("initialize", "/dev/ttyUSB0");
 sensor.record(60);
 
 sensor.on('results', function(results){
-        console.log('ready to send SMS');
-        console.log('results', results);
+    console.log('ready to send SMS');
+    console.log('results', results);
 
-        encodeForSMS(results).then(function(sms){
-            quipu.handle("sendSMS", sms, numbers.serverNumber);
-        });
+    encodeForSMS(results).then(function(sms){
+        quipu.handle("sendSMS", sms, numbers.serverNumber);
+    });
 });

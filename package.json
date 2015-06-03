@@ -9,7 +9,7 @@
   "author": "ants <contact@ants.builders> (http://ants.builders)",
   "license": "MIT",
   "dependencies": {
-    "6sense": "0.0.4",
+    "6sense": "0.0.5",
     "quipu": "0.0.3"
   }
 }
