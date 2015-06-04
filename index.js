@@ -6,7 +6,16 @@ var encodeForSMS = require('6sense/js/codec/encodeForSMS.js');
 var quipu = require("quipu");
 var schedule = require('node-schedule');
 var numbers = require("./numbers.json");
-quipu.handle("initialize", "/dev/ttyUSB0");
+var devices = {
+	modem: "/dev/ttyUSB0",
+	sms: "/dev/ttyUSB2"
+};
+
+quipu.handle("initialize", devices);
+
+quipu.on("smsReceived", function(sms){
+	console.log(sms);
+});
 
 sensor.record(300);
 
