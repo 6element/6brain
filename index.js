@@ -61,11 +61,13 @@ quipu.on("smsReceived", function(sms){
                   "quipu_state": quipu.state,
                   "6sense_state": sensor.state
                });
+               console.log("sending status", response);
                quipu.handle("sendSMS", response, sms.from);
                break;
 
             case "ip":
                var response = JSON.stringify(getIp());
+               console.log("sending ip", response);
                quipu.handle("sendSMS", response, sms.from);
                break;
             }
@@ -95,18 +97,3 @@ quipu.on("smsReceived", function(sms){
      
    }
 });
-
-// spawning a 3G connexion and closing it after 30 seconds
-quipu.handle("open3G");
-
-setTimeout(function(){
-   quipu.handle("close3G");
-}, 30000)
-
-
-// open a reverse ssh tunnel towards "kerrigan" (must be set in your ~/.ssh/config)
-quipu.handle("openTunnel", 2222, 9632, "kerrigan");
-
-setTimeout(function(){
-   quipu.handle("closeTunnel");
-}, 30000)
