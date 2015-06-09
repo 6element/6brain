@@ -5,7 +5,7 @@ var os = require('os');
 var ifaces = os.networkInterfaces();
 
 
-module.exports = function()
+module.exports = function() {
    var result = {};
 
    Object.keys(ifaces).forEach(function (ifname) {
@@ -28,4 +28,4 @@ module.exports = function()
    });
 
    return result;
-}
+};

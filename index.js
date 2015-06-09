@@ -2,7 +2,7 @@
 
 
 var sensor = require("6sense");
-var encodeForSMS = require('6sense/js/codec/encodeForSMS.js');
+var encodeForSMS = require('6sense/src/codec/encodeForSMS.js');
 var quipu = require("quipu");
 var schedule = require('node-schedule');
 var numbers = require("./numbers.json");
@@ -58,8 +58,8 @@ quipu.on("smsReceived", function(sms){
          switch(command) {
             case "status":
                var response = JSON.stringify({
-                  quipu_state: quipu.state,
-                  6sense_state: sensor.state
+                  "quipu_state": quipu.state,
+                  "6sense_state": sensor.state
                });
                quipu.handle("sendSMS", response, sms.from);
                break;
