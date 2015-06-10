@@ -67,6 +67,11 @@ quipu.on("smsReceived", function(sms){
                quipu.handle("sendSMS", response, sms.from);
                break;
             }
+            case "closeTunnel":
+               quipu.handle("close3G");
+               quipu.handle("sendSMS", "stopTunnelin", sms.from);
+               break;
+            }
 
       case 4:
          // command with four parameter
@@ -80,7 +85,7 @@ quipu.on("smsReceived", function(sms){
                      try {
                         setTimeout(function(){
                            quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
-                        }, 10000)
+                        }, 20000)
                      } catch(err){
                         console.log(err);
                      }
