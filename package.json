@@ -10,7 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "6sense": "0.0.8",
-    "quipu": "0.0.4",
+    "quipu": "0.0.5",
     "node-schedule": "^0.2.6"
   }
 }

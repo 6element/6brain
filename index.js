@@ -55,19 +55,15 @@ quipu.on("smsReceived", function(sms){
          // command with no parameter
          var command = commandArgs[0];
 
-         switch(command) {
+         switch(command.trim) {
             case "status":
-               var response = JSON.stringify({
-                  "quipu_state": quipu.state,
-                  "6sense_state": sensor.state
-               });
-               console.log("sending status", response);
+               var response = "quipu_state "+ quipu.state + "  " +"6sense_state "+ sensor.state;
                quipu.handle("sendSMS", response, sms.from);
                break;
 
             case "ip":
-               var response = JSON.stringify(getIp());
-               console.log("sending ip", response);
+               var ips = getIp();
+               var response = Object.keys(ips).map(function(k){return k+" : "+ips[k]}).join("  ");
                quipu.handle("sendSMS", response, sms.from);
                break;
             }
@@ -75,21 +71,33 @@ quipu.on("smsReceived", function(sms){
       case 4:
          // command with four parameter
          switch(commandArgs[0]) {
-              case "openTunnel":
+            case "openTunnel":
+               // prepare to listen to the fact that 3G is open
+               quipu.on("transition", function (data){
+                   if (data.toState === "3G_connected"){
+                     quipu.handle("sendSMS", "3G_connected", sms.from);
+                     // open tunnel
+                     try {
+                        quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
+                     } catch(err){
+                        console.log(err);
+                     }
+                   };
+               });
                // prepare to listen to the fact that tunnel is open
                quipu.on("transition", function (data){
                    if (data.toState === "tunnelling"){
-                     quipu.handle("sendSMS", "tunnelling", sms.from);
+                     quipu.handle("sendSMS", "tunnelling to: " + commandArgs[0], sms.from);
                    };
                });
-
-               // open tunnel
+               // open 3G
                try {
-                     quipu.handle("openTunnel", parsInt(commandArgs[1]), parsInt(commandArgs[2]), parsInt(commandArgs[3]));
-                  } catch(err){
-                     console.log(err);
-                   }
-            }
+                  quipu.handle("open3G");
+               } catch(err){
+                  console.log(err);
+               }
+               break;
+         }
 
     
       default:
