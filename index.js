@@ -66,12 +66,16 @@ quipu.on("smsReceived", function(sms){
                var response = Object.keys(ips).map(function(k){return k+" : "+ips[k]}).join("  ");
                quipu.handle("sendSMS", response, sms.from);
                break;
-            }
+            case "close3G":
+               quipu.handle("close3G");
+               quipu.handle("sendSMS", "stop3G", sms.from);
+               break;
             case "closeTunnel":
                quipu.handle("close3G");
-               quipu.handle("sendSMS", "stopTunnelin", sms.from);
+               quipu.handle("sendSMS", "stopTunneling", sms.from);
                break;
             }
+         break;
 
       case 4:
          // command with four parameter
@@ -79,11 +83,12 @@ quipu.on("smsReceived", function(sms){
             case "openTunnel":
                // prepare to listen to the fact that 3G is open
                quipu.on("transition", function (data){
-                   if (data.toState === "3G_connected"){
+                   if (data.toState === "3G_connected" && data.fromState === "initialized"){
                      quipu.handle("sendSMS", "3G_connected", sms.from);
                      // open tunnel after 10 seconds
                      try {
                         setTimeout(function(){
+                           console.log("opening tunnnel")
                            quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
                         }, 20000)
                      } catch(err){
@@ -94,7 +99,8 @@ quipu.on("smsReceived", function(sms){
                // prepare to listen to the fact that tunnel is open
                quipu.on("transition", function (data){
                    if (data.toState === "tunnelling"){
-                     quipu.handle("sendSMS", "tunnelling to: " + commandArgs[0], sms.from);
+                     console.log("sending tunnelling")
+                     quipu.handle("sendSMS", "tunnelling to " + commandArgs[3], sms.from);
                    };
                });
                // open 3G
@@ -104,11 +110,12 @@ quipu.on("smsReceived", function(sms){
                   console.log(err);
                }
                break;
+            break;
          }
 
     
       default:
-         console.log("Unrecognized command.")
+         console.log("Unrecognized command.", commandArgs)
      
    }
 });
