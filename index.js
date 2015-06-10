@@ -47,7 +47,7 @@ schedule.scheduleJob('00 06 * * *', function(){
 // receiving SMS, parse to make action
 quipu.on("smsReceived", function(sms){
    console.log("SMS received: ", sms);
-   var commandArgs = sms.body.split(":");
+   var commandArgs = sms.body.trim().split(":");
 
    switch(commandArgs.length) {
 
@@ -55,7 +55,7 @@ quipu.on("smsReceived", function(sms){
          // command with no parameter
          var command = commandArgs[0];
 
-         switch(command.trim) {
+         switch(command) {
             case "status":
                var response = "quipu_state "+ quipu.state + "  " +"6sense_state "+ sensor.state;
                quipu.handle("sendSMS", response, sms.from);
@@ -76,9 +76,11 @@ quipu.on("smsReceived", function(sms){
                quipu.on("transition", function (data){
                    if (data.toState === "3G_connected"){
                      quipu.handle("sendSMS", "3G_connected", sms.from);
-                     // open tunnel
+                     // open tunnel after 10 seconds
                      try {
-                        quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
+                        setTimeout(function(){
+                           quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
+                        }, 10000)
                      } catch(err){
                         console.log(err);
                      }
