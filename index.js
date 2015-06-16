@@ -7,10 +7,20 @@ var quipu = require("quipu");
 var schedule = require('node-schedule');
 var numbers = require("./numbers.json");
 var getIp =require("./src/getIp.js");
+var spawn = require('child_process').spawn;
 
 var MEASURE_PERIOD = 300; // in seconds
 var WAKEUP_HOUR_UTC = 6;
 var SLEEP_HOUR_UTC = 20;
+var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
+
+var debug = function() {
+    if (DEBUG) {
+        console.log("DEBUG from 6brain:");
+        console.log.apply(console, arguments);
+        console.log("==================");
+    };
+}
 
 // initilize modem
 var devices = {
@@ -46,7 +56,7 @@ schedule.scheduleJob('00 06 * * *', function(){
 
 // receiving SMS, parse to make action
 quipu.on("smsReceived", function(sms){
-   console.log("SMS received: ", sms);
+   debug("SMS received: ", sms);
    var commandArgs = sms.body.trim().split(":");
 
    switch(commandArgs.length) {
@@ -60,10 +70,20 @@ quipu.on("smsReceived", function(sms){
                var response = "quipu_state "+ quipu.state + "  " +"6sense_state "+ sensor.state;
                quipu.handle("sendSMS", response, sms.from);
                break;
-
+            case "reboot":
+               spawn("reboot");
+               break;
             case "ip":
                var ips = getIp();
                var response = Object.keys(ips).map(function(k){return k+" : "+ips[k]}).join("  ");
+               quipu.handle("sendSMS", response, sms.from);
+               break;
+            case "connect3G":
+               quipu.on("transition", function (data){
+                  if (data.toState === "3G_connected" && data.fromState === "initialized")
+                     quipu.handle("sendSMS", "3G_connected", sms.from);
+               });
+               quipu.handle("open3G");
                quipu.handle("sendSMS", response, sms.from);
                break;
             case "close3G":
@@ -84,22 +104,15 @@ quipu.on("smsReceived", function(sms){
                // prepare to listen to the fact that 3G is open
                quipu.on("transition", function (data){
                    if (data.toState === "3G_connected" && data.fromState === "initialized"){
+                     console.log("opening tunnnel");
                      quipu.handle("sendSMS", "3G_connected", sms.from);
-                     // open tunnel after 10 seconds
-                     try {
-                        setTimeout(function(){
-                           console.log("opening tunnnel")
-                           quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
-                        }, 20000)
-                     } catch(err){
-                        console.log(err);
-                     }
+                     quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
                    };
                });
                // prepare to listen to the fact that tunnel is open
                quipu.on("transition", function (data){
                    if (data.toState === "tunnelling"){
-                     console.log("sending tunnelling")
+                     debug("sending tunnelling")
                      quipu.handle("sendSMS", "tunnelling to " + commandArgs[3], sms.from);
                    };
                });
@@ -110,9 +123,8 @@ quipu.on("smsReceived", function(sms){
                   console.log(err);
                }
                break;
-            break;
          }
-
+         break;
     
       default:
          console.log("Unrecognized command.", commandArgs)
