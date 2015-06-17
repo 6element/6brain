@@ -57,7 +57,8 @@ schedule.scheduleJob('00 06 * * *', function(){
 // receiving SMS, parse to make action
 quipu.on("smsReceived", function(sms){
    debug("SMS received: ", sms);
-   var commandArgs = sms.body.trim().split(":");
+   var commandArgs = sms.body.trim().toLowerCase().split(":");
+   debug("commandArgs ", commandArgs);
 
    switch(commandArgs.length) {
 
@@ -78,19 +79,18 @@ quipu.on("smsReceived", function(sms){
                var response = Object.keys(ips).map(function(k){return k+" : "+ips[k]}).join("  ");
                quipu.handle("sendSMS", response, sms.from);
                break;
-            case "connect3G":
+            case "open3g":
                quipu.on("transition", function (data){
                   if (data.toState === "3G_connected" && data.fromState === "initialized")
                      quipu.handle("sendSMS", "3G_connected", sms.from);
                });
                quipu.handle("open3G");
-               quipu.handle("sendSMS", response, sms.from);
                break;
-            case "close3G":
+            case "close3g":
                quipu.handle("close3G");
-               quipu.handle("sendSMS", "stop3G", sms.from);
+               quipu.handle("sendSMS", "3G_disconnected", sms.from);
                break;
-            case "closeTunnel":
+            case "closetunnel":
                quipu.handle("close3G");
                quipu.handle("sendSMS", "stopTunneling", sms.from);
                break;
@@ -100,7 +100,7 @@ quipu.on("smsReceived", function(sms){
       case 4:
          // command with four parameter
          switch(commandArgs[0]) {
-            case "openTunnel":
+            case "opentunnel":
                // prepare to listen to the fact that 3G is open
                quipu.on("transition", function (data){
                    if (data.toState === "3G_connected" && data.fromState === "initialized"){
