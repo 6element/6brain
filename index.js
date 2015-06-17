@@ -6,7 +6,10 @@ var encodeForSMS = require('6sense/src/codec/encodeForSMS.js');
 var quipu = require("quipu");
 var schedule = require('node-schedule');
 var numbers = require("./numbers.json");
-var getIp =require("./src/getIp.js");
+
+var myPIN = require('./myPINcode.js');
+
+var getIp = require("./src/getIp.js");
 var spawn = require('child_process').spawn;
 
 var MEASURE_PERIOD = 300; // in seconds
@@ -27,7 +30,7 @@ var devices = {
    modem: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0",
    sms: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0"
 };
-quipu.handle("initialize", devices);
+quipu.handle("initialize", devices, myPIN);
 
 // check if current time is valid and record consequently
 var date = new Date();
