@@ -7,11 +7,13 @@ var quipu = require("quipu");
 var schedule = require('node-schedule');
 var numbers = require("./numbers.json");
 var devices = {
-	modem: "/dev/ttyUSB0",
-	sms: "/dev/ttyUSB2"
+	modem: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0",
+	sms: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0"
 };
 
-quipu.handle("initialize", devices);
+var myPIN = require('./myPINcode.js');
+
+quipu.handle("initialize", devices, myPINcode);
 
 quipu.on("smsReceived", function(sms){
 	console.log(sms);
