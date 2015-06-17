@@ -24,8 +24,8 @@ var debug = function() {
 
 // initilize modem
 var devices = {
-   modem: "/dev/ttyUSB0",
-   sms: "/dev/ttyUSB2"
+   modem: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0",
+   sms: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0"
 };
 quipu.handle("initialize", devices);
 
@@ -67,7 +67,7 @@ quipu.on("smsReceived", function(sms){
 
          switch(command) {
             case "status":
-               var response = "quipu_state "+ quipu.state + "  " +"6sense_state "+ sensor.state;
+               var response = "quipu_state: "+ quipu.state + " 6sense_state: "+ sensor.state + " signal: " + quipu.signalStrength + " registration: " + quipu.registrationStatus;
                quipu.handle("sendSMS", response, sms.from);
                break;
             case "reboot":
@@ -107,14 +107,16 @@ quipu.on("smsReceived", function(sms){
                      console.log("opening tunnnel");
                      quipu.handle("sendSMS", "3G_connected", sms.from);
                      quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
+                   }
+                   else if (data.toState === "tunnelling"){
+                     debug("sending tunnelling");
+                     quipu.handle("sendSMS", "tunnelling", sms.from);
                    };
                });
-               // prepare to listen to the fact that tunnel is open
-               quipu.on("transition", function (data){
-                   if (data.toState === "tunnelling"){
-                     debug("sending tunnelling")
-                     quipu.handle("sendSMS", "tunnelling to " + commandArgs[3], sms.from);
-                   };
+               quipu.on("tunnelError", function(msg){
+                  debug("tunnelError");
+                  quipu.handle("close3G");
+                  quipu.handle("sendSMS", "closing 3G because error in tunneling: " + msg, sms.from);
                });
                // open 3G
                try {
