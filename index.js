@@ -5,9 +5,7 @@ var sensor = require("6sense");
 var encodeForSMS = require('6sense/src/codec/encodeForSMS.js');
 var quipu = require("quipu");
 var schedule = require('node-schedule');
-var numbers = require("./numbers.json");
-
-var myPIN = require('./myPINcode.js');
+var PRIVATE = require("./PRIVATE.json");
 
 var getIp = require("./src/getIp.js");
 var spawn = require('child_process').spawn;
@@ -30,7 +28,8 @@ var devices = {
    modem: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0",
    sms: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0"
 };
-quipu.handle("initialize", devices, myPIN);
+quipu.handle("initialize", devices, PRIVATE.PIN);
+quipu.handle("sendSMS", "starting 6brain of " + process.env.HOSTNAME, PRIVATE.installerNumber);
 
 // check if current time is valid and record consequently
 var date = new Date();
@@ -41,18 +40,18 @@ if (current_hour <= SLEEP_HOUR_UTC && current_hour >= WAKEUP_HOUR_UTC)
 // each time a measurment is finished encode it and send it via sms
 sensor.on('processed', function(results){
    encodeForSMS([results]).then(function(sms){
-      quipu.handle("sendSMS", sms, numbers.serverNumber);
+      quipu.handle("sendSMS", sms, PRIVATE.serverNumber);
    });
 });
 
 // stop measurments at SLEEP_HOUR_UTC
-schedule.scheduleJob('00 20 * * *', function(){
+schedule.scheduleJob('00 16 * * *', function(){
    console.log("Pausing measurments.");
    sensor.pause();
 });
 
 // restart measurments at WAKEUP_HOUR_UTC
-schedule.scheduleJob('00 06 * * *', function(){
+schedule.scheduleJob('00 07 * * *', function(){
    console.log("Restarting measurments.");
    sensor.record(MEASURE_PERIOD);
 });
