@@ -6,7 +6,7 @@ var request = require('request');
 
 var debug = function() {
    if (DEBUG) {
-      console.log("DEBUG from 6brain:");
+      console.log("DEBUG from antenna:");
       console.log.apply(console, arguments);
       console.log("==================");
    };
@@ -18,7 +18,7 @@ var devices = {
    sms: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0"
 };
 quipu.handle("initialize", devices, PRIVATE.PIN);
-quipu.handle("sendSMS", "starting 6brain of " + process.env.HOSTNAME, PRIVATE.installerNumber);
+quipu.handle("sendSMS", "starting antenna of " + process.env.HOSTNAME, PRIVATE.installerNumber);
 
 
 // receiving SMS send it to 6element
