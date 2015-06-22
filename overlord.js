@@ -4,6 +4,8 @@ var quipu = require("quipu");
 var PRIVATE = require("./PRIVATE.json");
 var request = require('request');
 
+var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
+
 var debug = function() {
    if (DEBUG) {
       console.log("DEBUG from antenna:");
@@ -26,19 +28,20 @@ quipu.on("smsReceived", function(sms){
    debug("SMS received: ", sms);
    
    request.post({
+      rejectUnauthorized: false,
       url: 'https://6element.ants.builders/twilio',
       headers: {
          'Content-Type': 'application/json'
       },
-      body: {
-         Body: "test message",
+      body: JSON.stringify({
+         Body: "eJzj4uLieLmEWYhFQizfHAARYgKh",
          From: sms.from
-      }
+      })
    }, function(error, response, body){
       if(error) {
-         console.log(error);
+         console.log("ERROR in antenna:", error);
       } else {
-         console.log(response.statusCode, body);
+         debug(response.statusCode, body);
       }
    });
 });
