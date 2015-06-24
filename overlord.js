@@ -8,7 +8,7 @@ var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
 
 var debug = function() {
    if (DEBUG) {
-      console.log("DEBUG from antenna:");
+      console.log("DEBUG from overlord:");
       console.log.apply(console, arguments);
       console.log("==================");
    };
@@ -20,7 +20,7 @@ var devices = {
    sms: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0"
 };
 quipu.handle("initialize", devices, PRIVATE.PIN);
-quipu.handle("sendSMS", "starting antenna of " + process.env.HOSTNAME, PRIVATE.installerNumber);
+quipu.handle("sendSMS", "starting overlord of " + process.env.HOSTNAME, PRIVATE.installerNumber);
 
 
 // receiving SMS send it to 6element
@@ -34,12 +34,12 @@ quipu.on("smsReceived", function(sms){
          'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-         Body: "eJzj4uLieLmEWYhFQizfHAARYgKh",
+         Body: sms.body,
          From: sms.from
       })
    }, function(error, response, body){
       if(error) {
-         console.log("ERROR in antenna:", error);
+         console.log("ERROR in overlord:", error);
       } else {
          debug(response.statusCode, body);
       }
