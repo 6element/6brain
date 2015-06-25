@@ -32,9 +32,9 @@ var debug = function() {
 }
 var sendSMS = function(encoded, body, dest){
    if (encoded === "encoded")
-      quipu.handle("sendSMS", "1" + body, dest);
+      quipu.sendSMS("1" + body, dest);
    else
-      quipu.handle("sendSMS", "0" + body, dest);
+      quipu.sendSMS("0" + body, dest);
 }
 // initialize communication
 quipu.handle("initialize", devices, PRIVATE.PIN);
