@@ -40,8 +40,8 @@ var sendSMS = function(encoded, body, dest){
 quipu.handle("initialize", devices, PRIVATE.PIN);
 quipu.on("transition", function (data){
    if (data.toState === "initialized"){
-      sendSMS("clear", "starting " + antName, PRIVATE.installerNumber);
       sendSMS("clear", "init", PRIVATE.serverNumber);
+      sendSMS("clear", "initialization of " + antName, PRIVATE.installerNumber);
    }
 });
 
@@ -124,7 +124,7 @@ quipu.on("smsReceived", function(sms){
          // command with four parameter
          switch(commandArgs[0]) {
             case "date":
-               var date = commandArgs[1].replace("T", " ") + [commandArgs[2], commandArgs[3], commandArgs[4].split(".")[0]].join(":");
+               var date = commandArgs[1].replace("t", " ") + ":" + commandArgs[2] + ":" + commandArgs[3].split(".")[0];
                debug("Received date", sms.body, date);
                spawn("timedatectl", ["set-time", date]);
                break;
@@ -152,6 +152,10 @@ quipu.on("smsReceived", function(sms){
                } catch(err){
                   console.log(err);
                }
+               setTimeout(function(){
+                  debug("Couldn't open connection");
+                  sendSMS("clear", "Timeout to open 3G.");
+               }, 20000)
                break;
          }
          break;
