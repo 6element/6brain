@@ -23,7 +23,9 @@ var devices = {
 
 var antName = os.hostname();
 var lastSender = undefined;
+var lastCommandArgs = undefined;
 var firstInit = true;
+var shouldTunnel = false;
 
 var debug = function() {
     if (DEBUG) {
@@ -69,14 +71,25 @@ schedule.scheduleJob('00 '+ WAKEUP_HOUR_UTC +' * * *', function(){
 
 
 quipu.on("transition", function (data){
-   if (data.toState === "3G_connected" && data.fromState === "initialized")
-      sendSMS("clear", "3G_connected", lastSender);
    if (data.toState === "3G_connected" && data.fromState === "tunnelling")
       sendSMS("clear", "closedTunnel", lastSender);
+   if (data.toState === "initialized" && data.fromState === "tunnelling")
+      sendSMS("clear", "closedTunnel and 3G", lastSender);
    if (data.toState === "tunnelling" && data.fromState === "3G_connected")
       sendSMS("clear", "openedTunnel", lastSender);
    if (data.toState === "initialized" && data.fromState === "3G_connected")
       sendSMS("clear", "3G_disconnected", lastSender);
+   if (data.toState === "3G_connected" && data.fromState === "initialized") {
+      sendSMS("clear", "3G_connected", lastSender);
+      if (shouldTunnel)
+         quipu.handle("openTunnel", parseInt(lastCommandArgs[1]), parseInt(lastCommandArgs[2]), lastCommandArgs[3]);
+   }
+});
+
+quipu.on("tunnelError", function(msg){
+   debug("tunnelError");
+   quipu.handle("close3G");
+   sendSMS("clear", "closing 3G because error in tunneling: " + msg, lastSender);
 });
 
 // receiving SMS, parse to make action
@@ -115,9 +128,11 @@ quipu.on("smsReceived", function(sms){
                quipu.handle("open3G");
                break;
             case "close3g":
+               shouldTunnel = false;
                quipu.handle("close3G");
                break;
             case "closetunnel":
+               shouldTunnel = false;
                quipu.handle("close3G");
                break;
             }
@@ -138,6 +153,7 @@ quipu.on("smsReceived", function(sms){
                }
                break;
          }
+         break;
       case 4:
          // command with four parameters
          switch(commandArgs[0]) {
@@ -152,29 +168,9 @@ quipu.on("smsReceived", function(sms){
                   sensor.record(MEASURE_PERIOD);
                break;
             case "opentunnel":
-               // prepare to listen to the fact that 3G is open
-               quipu.on("transition", function (data){
-                   if (data.toState === "3G_connected" && data.fromState === "initialized"){
-                     console.log("opening tunnnel");
-                     sendSMS("clear", "3G_connected", sms.from);
-                     quipu.handle("openTunnel", parseInt(commandArgs[1]), parseInt(commandArgs[2]), commandArgs[3]);
-                   }
-                   else if (data.toState === "tunnelling"){
-                     debug("sending tunnelling");
-                     sendSMS("clear", "tunnelling", sms.from);
-                   };
-               });
-               quipu.on("tunnelError", function(msg){
-                  debug("tunnelError");
-                  quipu.handle("close3G");
-                  sendSMS("clear", "closing 3G because error in tunneling: " + msg, sms.from);
-               });
+               shouldTunnel = true;
+               lastCommandArgs = commandArgs;
                quipu.handle("open3G");
-
-               setTimeout(function(){
-                  debug("Couldn't open connection");
-                  sendSMS("clear", "Timeout to open 3G.");
-               }, 20000)
                break;
          }
          break;
