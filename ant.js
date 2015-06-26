@@ -22,6 +22,8 @@ var devices = {
 };
 
 var antName = os.hostname();
+var lastSender = undefined;
+var firstInit = true;
 
 var debug = function() {
     if (DEBUG) {
@@ -38,7 +40,8 @@ var sendSMS = function(encoded, body, dest){
 // initialize communication
 quipu.handle("initialize", devices, PRIVATE.PIN);
 quipu.on("transition", function (data){
-   if (data.toState === "initialized"){
+   if (data.toState === "initialized" && firstInit){
+      firstInit = false;
       sendSMS("clear", "init", PRIVATE.serverNumber);
       sendSMS("clear", "initialization of " + antName, PRIVATE.installerNumber);
    }
@@ -64,10 +67,23 @@ schedule.scheduleJob('00 '+ WAKEUP_HOUR_UTC +' * * *', function(){
    sensor.record(MEASURE_PERIOD);
 });
 
+
+quipu.on("transition", function (data){
+   if (data.toState === "3G_connected" && data.fromState === "initialized")
+      sendSMS("clear", "3G_connected", lastSender);
+   if (data.toState === "3G_connected" && data.fromState === "tunnelling")
+      sendSMS("clear", "closedTunnel", lastSender);
+   if (data.toState === "tunnelling" && data.fromState === "3G_connected")
+      sendSMS("clear", "openedTunnel", lastSender);
+   if (data.toState === "initialized" && data.fromState === "3G_connected")
+      sendSMS("clear", "3G_disconnected", lastSender);
+});
+
 // receiving SMS, parse to make action
 quipu.on("smsReceived", function(sms){
    debug("SMS received: ", sms);
    var commandArgs = sms.body.trim().toLowerCase().split(":");
+   lastSender = sms.from;
    debug("commandArgs ", commandArgs);
 
    switch(commandArgs.length) {
@@ -78,7 +94,7 @@ quipu.on("smsReceived", function(sms){
 
          switch(command) {
             case "status":
-               var response = "quipu_state: "+ quipu.state + " 6sense_state: "+ sensor.state + " signal: " + quipu.signalStrength + " registration: " + quipu.registrationStatus;
+               var response = "quipu:"+ quipu.state + " sense:"+ sensor.state + " signal:" + quipu.signalStrength;
                sendSMS("clear", response, sms.from);
                break;
             case "reboot":
@@ -96,19 +112,13 @@ quipu.on("smsReceived", function(sms){
                sensor.pause();
                break;
             case "open3g":
-               quipu.on("transition", function (data){
-                  if (data.toState === "3G_connected" && data.fromState === "initialized")
-                     sendSMS("clear", "3G_connected", sms.from);
-               });
                quipu.handle("open3G");
                break;
             case "close3g":
                quipu.handle("close3G");
-               sendSMS("clear", "3G_disconnected", sms.from);
                break;
             case "closetunnel":
                quipu.handle("close3G");
-               sendSMS("clear", "stopTunneling", sms.from);
                break;
             }
          break;
@@ -159,12 +169,8 @@ quipu.on("smsReceived", function(sms){
                   quipu.handle("close3G");
                   sendSMS("clear", "closing 3G because error in tunneling: " + msg, sms.from);
                });
-               // open 3G
-               try {
-                  quipu.handle("open3G");
-               } catch(err){
-                  console.log(err);
-               }
+               quipu.handle("open3G");
+
                setTimeout(function(){
                   debug("Couldn't open connection");
                   sendSMS("clear", "Timeout to open 3G.");
