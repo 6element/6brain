@@ -13,7 +13,7 @@ var os = require("os");
 
 var MEASURE_PERIOD = 300; // in seconds
 var WAKEUP_HOUR_UTC = "07";
-var SLEEP_HOUR_UTC = "16";
+var SLEEP_HOUR_UTC = "18";
 var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
 
 var devices = {
@@ -24,11 +24,10 @@ var devices = {
 var antName = os.hostname();
 
 var debug = function() {
-   if (DEBUG) {
-      console.log("DEBUG from 6brain:");
-      console.log.apply(console, arguments);
-      console.log("==================");
-   };
+    if (DEBUG) {
+        [].unshift.call(arguments, "[DEBUG 6brain] ");
+        console.log.apply(console, arguments);
+    };
 }
 var sendSMS = function(encoded, body, dest){
    if (encoded === "encoded")
@@ -45,10 +44,6 @@ quipu.on("transition", function (data){
    }
 });
 
-// check if current time is valid and record consequently
-var current_hour = new Date().getHours();
-if (current_hour <= SLEEP_HOUR_UTC && current_hour >= WAKEUP_HOUR_UTC)
-   sensor.record(MEASURE_PERIOD);
 
 // each time a measurment is finished encode it and send it via sms
 sensor.on('processed', function(results){
@@ -94,10 +89,10 @@ quipu.on("smsReceived", function(sms){
                var response = Object.keys(ips).map(function(k){return k+" : "+ips[k]}).join("  ");
                sendSMS("clear", response, sms.from);
                break;
-            case "resumeRecord":
+            case "resumerecord":
                sensor.record(MEASURE_PERIOD);
                break;
-            case "pauseRecord":
+            case "pauserecord":
                sensor.pause();
                break;
             case "open3g":
@@ -118,15 +113,33 @@ quipu.on("smsReceived", function(sms){
             }
          break;
 
-
-
+      case 2:
+         // command with two parameters
+         switch(commandArgs[0]) {
+            case "changeperiod":
+               if (commandArgs[1] == parseInt(commandArgs[1], 10)){
+                  MEASURE_PERIOD = parseInt(commandArgs[1], 10);
+                  sensor.pause();
+                  setTimeout(function(){
+                     sensor.record(MEASURE_PERIOD);
+                  }, 3000)
+               } else {
+                  console.log("Period is not an integer ", commandArgs[1])
+               }
+               break;
+         }
       case 4:
-         // command with four parameter
+         // command with four parameters
          switch(commandArgs[0]) {
             case "date":
                var date = commandArgs[1].replace("t", " ") + ":" + commandArgs[2] + ":" + commandArgs[3].split(".")[0];
                debug("Received date", sms.body, date);
                spawn("timedatectl", ["set-time", date]);
+               // check if current time is valid and record consequently
+               var current_hour = new Date().getHours();
+               console.log("current_hour ", current_hour)
+               if (current_hour <= SLEEP_HOUR_UTC && current_hour >= WAKEUP_HOUR_UTC)
+                  sensor.record(MEASURE_PERIOD);
                break;
             case "opentunnel":
                // prepare to listen to the fact that 3G is open
