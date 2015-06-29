@@ -31,7 +31,7 @@ var shouldTunnel = false;
 
 var debug = function() {
     if (DEBUG) {
-        [].unshift.call(arguments, "[DEBUG 6brain] ");
+        [].unshift.call(arguments, "[DEBUG 6brain/ant] ");
         console.log.apply(console, arguments);
     };
 }
