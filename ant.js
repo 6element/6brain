@@ -119,7 +119,7 @@ quipu.on("tunnelError", function(msg){
 quipu.on("smsReceived", function(sms){
    debug("SMS received: ", sms);
    var commandArgs = sms.body.trim().toLowerCase().split(":");
-   if (PRIVATE.authorizedNumbers.indexOf(sms.from) >= 0 || sms.from === PRIVATE.serverNumber) {
+   if (PRIVATE.authorizedNumbers.indexOf(sms.from) >= 0) {
       if (sms.from === PRIVATE.serverNumber) {
          forServer = true;
          lastSender = sms.from;
@@ -184,6 +184,10 @@ quipu.on("smsReceived", function(sms){
                   } else {
                      console.log("Period is not an integer ", commandArgs[1])
                   }
+                  break;
+               case "changedestination":
+                  PRIVATE.serverNumber = commandArgs[1];
+                  debug("changing destination to :", commandArgs[1]);
                   break;
             }
             break;
