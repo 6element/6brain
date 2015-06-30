@@ -102,6 +102,10 @@ quipu.on("transition", function (data){
    }
 });
 
+sensor.on("transition", function (data){
+      sendResponseAndStatus(null, null);
+});
+
 quipu.on("tunnelError", function(msg){
    debug("tunnelError");
    quipu.handle("close3G");

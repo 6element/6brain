@@ -11,7 +11,7 @@
   "dependencies": {
     "6sense": "0.0.8",
     "node-schedule": "^0.2.6",
-    "quipu": "0.0.9",
+    "quipu": "0.1.0",
     "request": "^2.58.0"
   }
 }
