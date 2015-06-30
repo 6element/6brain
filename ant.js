@@ -47,8 +47,11 @@ var sendResponseAndStatus = function(query, result){
    var body = {
       info: 
          {command: query, result: result}, 
-      quipu: quipu.state, 
-      sense: sensor.state
+      quipu: {
+         state: quipu.state,
+         signal: quipu.signalStrength
+      }, 
+      sense: sensor.state,
    };
    parser.encode(body)
       .then(function(message){
