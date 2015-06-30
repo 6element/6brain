@@ -52,7 +52,7 @@ var sendResponseAndStatus = function(query, result){
    };
    parser.encode(body)
       .then(function(message){
-         quipu.sendSMS("generic_encoded", message, lastSender);
+         quipu.sendSMS("generic_encoded", message, PRIVATE.serverNumber);
       })
 }
 // initialize communication
@@ -191,6 +191,9 @@ quipu.on("smsReceived", function(sms){
                   var current_hour = new Date().getHours();
                   if (current_hour <= SLEEP_HOUR_UTC && current_hour >= WAKEUP_HOUR_UTC)
                      sensor.record(MEASURE_PERIOD);
+                  setTimeout(function(){
+                     sendResponseAndStatus("initdate", "OK");
+                  }, 3000)
                   break;
                case "opentunnel":
                   shouldTunnel = true;
