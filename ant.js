@@ -52,7 +52,7 @@ var sendResponseAndStatus = function(query, result){
    };
    parser.encode(body)
       .then(function(message){
-         quipu.sendSMS("generic_encoded", message, PRIVATE.serverNumber);
+         sendSMS("generic_encoded", message, PRIVATE.serverNumber);
       })
 }
 // initialize communication
