@@ -45,10 +45,10 @@ var sendSMS = function(encoded, body, dest){
 }
 var sendResponseAndStatus = function(query, result){
    var body = {
-      "info": 
-         {"command": query, "result": result}, 
-      "quipu": quipu.state, 
-      "6sense": sensor.state
+      info: 
+         {command: query, result: result}, 
+      quipu: quipu.state, 
+      sense: sensor.state
    };
    parser.encode(body)
       .then(function(message){

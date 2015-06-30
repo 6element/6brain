@@ -24,6 +24,7 @@ var sendSMS = function(encoded, body, dest){
 
 var overlordName = os.hostname();
 var firstInit = true;
+var forServer = undefined;
 // initilize modem
 var devices = {
    modem: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0",
@@ -40,11 +41,10 @@ quipu.on("transition", function (data){
    }
 });
 
-// receiving SMS send it to 6element
 quipu.on("smsReceived", function(sms){
    debug("SMS received: ", sms);
    // authorized numbers, transmit to server
-   if (PRIVATE.authorizedNumbers.indexOf(sms.from) >= 0) {
+   if (PRIVATE.antNumbers.indexOf(sms.from) >= 0) {
    
       request.post({
          rejectUnauthorized: false,
@@ -65,9 +65,15 @@ quipu.on("smsReceived", function(sms){
       });
    }
    // server number if for debug
-   else if (sms.from === PRIVATE.serverNumber) {
+   else if (PRIVATE.authorizedNumbers.indexOf(sms.from) >= 0 || sms.from === PRIVATE.serverNumber) {
       var commandArgs = sms.body.trim().toLowerCase().split(":");
       debug("commandArgs ", commandArgs);
+      if (sms.from === PRIVATE.serverNumber) {
+         forServer = true;
+         lastSender = sms.from;
+      } else {
+         forServer = false;
+      }
 
       switch(commandArgs.length) {
 
