@@ -23,7 +23,6 @@ var devices = {
 };
 
 var antName = os.hostname();
-var lastSender = undefined;
 var lastCommandArgs = undefined;
 var forServer = undefined;
 var firstInit = true;
@@ -122,7 +121,6 @@ quipu.on("smsReceived", function(sms){
    if (PRIVATE.authorizedNumbers.indexOf(sms.from) >= 0) {
       if (sms.from === PRIVATE.serverNumber) {
          forServer = true;
-         lastSender = sms.from;
       } else {
          forServer = false;
       }

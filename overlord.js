@@ -22,6 +22,22 @@ var sendSMS = function(encoded, body, dest){
       quipu.sendSMS("0" + body, dest);
 }
 
+var sendResponseAndStatus = function(query, result){
+   var body = {
+      info: 
+         {command: query, result: result}, 
+      quipu: {
+         state: quipu.state,
+         signal: quipu.signalStrength
+      }, 
+      sense: null,
+   };
+   parser.encode(body)
+      .then(function(message){
+         sendSMS("generic_encoded", message, PRIVATE.serverNumber);
+      })
+}
+
 var overlordName = os.hostname();
 var firstInit = true;
 var forServer = undefined;
@@ -40,12 +56,12 @@ quipu.on("transition", function (data){
       sendSMS("clear", "initialization of " + overlordName, PRIVATE.authorizedNumbers[0]);
    }
 });
+   
 
 quipu.on("smsReceived", function(sms){
    debug("SMS received: ", sms);
-   // authorized numbers, transmit to server
+   // sms from an ant, transmit to server
    if (PRIVATE.antNumbers.indexOf(sms.from) >= 0) {
-   
       request.post({
          rejectUnauthorized: false,
          url: 'https://6element.ants.builders/twilio',
@@ -64,16 +80,15 @@ quipu.on("smsReceived", function(sms){
          }
       });
    }
-   // server number if for debug
-   else if (PRIVATE.authorizedNumbers.indexOf(sms.from) >= 0 || sms.from === PRIVATE.serverNumber) {
-      var commandArgs = sms.body.trim().toLowerCase().split(":");
-      debug("commandArgs ", commandArgs);
+   // sms from authorized numbers, command
+   else if (PRIVATE.authorizedNumbers.indexOf(sms.from) >= 0) {
       if (sms.from === PRIVATE.serverNumber) {
          forServer = true;
-         lastSender = sms.from;
       } else {
          forServer = false;
       }
+      var commandArgs = sms.body.trim().toLowerCase().split(":");
+      debug("commandArgs ", commandArgs);
 
       switch(commandArgs.length) {
 
@@ -86,7 +101,7 @@ quipu.on("smsReceived", function(sms){
                   if (forServer)
                      sendResponseAndStatus(command, "OK");
                   else
-                     sendSMS("clear", " quipu: " + quipu.state , sms.from);
+                     sendSMS("clear", " quipu: " + quipu.state);
                   break;
                case "reboot":
                   spawn("reboot");
@@ -110,6 +125,15 @@ quipu.on("smsReceived", function(sms){
                }
             break;
 
+         case 2:
+            // command with two parameters
+            switch(commandArgs[0]) {
+               case "changedestination":
+                  PRIVATE.serverNumber = commandArgs[1];
+                  debug("changing destination to :", commandArgs[1]);
+                  break;
+            }
+            break;
          case 4:
             // command with four parameters
             switch(commandArgs[0]) {
@@ -134,3 +158,4 @@ quipu.on("smsReceived", function(sms){
       console.log("Unauthorized number.");
    }
 });
+
