@@ -1,6 +1,7 @@
-"use strict;"
+"use strict";
 
 var quipu = require("quipu");
+var parser = require("quipu/parser.js")
 var PRIVATE = require("./PRIVATE.json");
 var request = require('request');
 var os = require("os");
@@ -34,13 +35,18 @@ var sendResponseAndStatus = function(query, result){
    };
    parser.encode(body)
       .then(function(message){
-         sendSMS("generic_encoded", message, PRIVATE.serverNumber);
+         var dest = modifiedDestination? modifiedDestination : PRIVATE.serverNumber;
+         sendSMS("generic_encoded", message, dest);
       })
 }
 
 var overlordName = os.hostname();
+var lastCommandArgs = undefined;
 var firstInit = true;
 var forServer = undefined;
+var shouldTunnel = false;
+var modifiedDestination = undefined;
+
 // initilize modem
 var devices = {
    modem: "/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0",
@@ -55,6 +61,28 @@ quipu.on("transition", function (data){
       sendSMS("clear", "init", PRIVATE.serverNumber);
       sendSMS("clear", "initialization of " + overlordName, PRIVATE.authorizedNumbers[0]);
    }
+});
+
+quipu.on("transition", function (data){
+   if (data.toState === "3G_connected" && data.fromState === "tunnelling")
+      sendResponseAndStatus("closetunnel", "OK");
+   if (data.toState === "initialized" && data.fromState === "tunnelling")
+      sendResponseAndStatus("close3g", "OK");
+   if (data.toState === "tunnelling" && data.fromState === "3G_connected")
+      sendResponseAndStatus("openTunnel", "OK");
+   if (data.toState === "initialized" && data.fromState === "3G_connected")
+      sendResponseAndStatus("close3g", "OK");
+   if (data.toState === "3G_connected" && data.fromState === "initialized") {
+      sendResponseAndStatus("open3g", "OK");
+      if (shouldTunnel)
+         quipu.handle("openTunnel", parseInt(lastCommandArgs[1]), parseInt(lastCommandArgs[2]), lastCommandArgs[3]);
+   }
+});
+
+quipu.on("tunnelError", function(msg){
+   debug("tunnelError");
+   quipu.handle("close3G");
+   sendResponseAndStatus("opentunnel", "ERROR: " + msg);
 });
    
 
@@ -101,7 +129,7 @@ quipu.on("smsReceived", function(sms){
                   if (forServer)
                      sendResponseAndStatus(command, "OK");
                   else
-                     sendSMS("clear", " quipu: " + quipu.state);
+                     sendSMS("clear", " quipu: " + quipu.state, sms.from);
                   break;
                case "reboot":
                   spawn("reboot");
@@ -129,8 +157,9 @@ quipu.on("smsReceived", function(sms){
             // command with two parameters
             switch(commandArgs[0]) {
                case "changedestination":
-                  PRIVATE.serverNumber = commandArgs[1];
+                  modifiedDestination = commandArgs[1];
                   debug("changing destination to :", commandArgs[1]);
+                  sendResponseAndStatus("changedestination", "OK");
                   break;
             }
             break;
@@ -141,6 +170,9 @@ quipu.on("smsReceived", function(sms){
                   var date = commandArgs[1].replace("t", " ") + ":" + commandArgs[2] + ":" + commandArgs[3].split(".")[0];
                   debug("Received date", sms.body, date);
                   spawn("timedatectl", ["set-time", date]);
+                  setTimeout(function(){
+                     sendResponseAndStatus("initdate", "OK");
+                  }, 3000)
                   break;
                case "opentunnel":
                   shouldTunnel = true;

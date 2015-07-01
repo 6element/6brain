@@ -27,6 +27,7 @@ var lastCommandArgs = undefined;
 var forServer = undefined;
 var firstInit = true;
 var shouldTunnel = false;
+var modifiedDestination = undefined;
 
 var debug = function() {
     if (DEBUG) {
@@ -54,7 +55,8 @@ var sendResponseAndStatus = function(query, result){
    };
    parser.encode(body)
       .then(function(message){
-         sendSMS("generic_encoded", message, PRIVATE.serverNumber);
+         var dest = modifiedDestination? modifiedDestination : PRIVATE.serverNumber;
+         sendSMS("generic_encoded", message, dest);
       })
 }
 // initialize communication
@@ -71,7 +73,8 @@ quipu.on("transition", function (data){
 // each time a measurment is finished encode it and send it via sms
 sensor.on('processed', function(results){
    encodeForSMS([results]).then(function(sms){
-      sendSMS("encoded", sms, PRIVATE.serverNumber);
+      var dest = modifiedDestination? modifiedDestination : PRIVATE.serverNumber;
+      sendSMS("6sense_encoded", sms, dest);
    });
 });
 
@@ -178,14 +181,16 @@ quipu.on("smsReceived", function(sms){
                      sensor.pause();
                      setTimeout(function(){
                         sensor.record(MEASURE_PERIOD);
+                        sendResponseAndStatus("changeperiod", "OK");
                      }, 3000)
                   } else {
                      console.log("Period is not an integer ", commandArgs[1])
                   }
                   break;
                case "changedestination":
-                  PRIVATE.serverNumber = commandArgs[1];
+                  modifiedDestination = commandArgs[1];
                   debug("changing destination to :", commandArgs[1]);
+                  sendResponseAndStatus("changedestination", "OK");
                   break;
             }
             break;
