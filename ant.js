@@ -187,6 +187,14 @@ quipu.on("smsReceived", function(sms){
                      console.log("Period is not an integer ", commandArgs[1])
                   }
                   break;
+               case "changestarttime":
+                     WAKEUP_HOUR_UTC = commandArgs[1];
+                     sendResponseAndStatus("changestarttime", "OK");
+                  break;
+               case "changestoptime":
+                     SLEEP_HOUR_UTC = commandArgs[1];
+                     sendResponseAndStatus("changestoptime", "OK");
+                  break;
                case "changedestination":
                   modifiedDestination = commandArgs[1];
                   debug("changing destination to :", commandArgs[1]);
