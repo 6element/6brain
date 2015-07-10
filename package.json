@@ -9,7 +9,7 @@
   "author": "ants <contact@ants.builders> (http://ants.builders)",
   "license": "MIT",
   "dependencies": {
-    "6sense": "0.0.8",
+    "6sense": "0.1.0",
     "node-schedule": "^0.2.6",
     "quipu": "0.1.0",
     "request": "^2.58.0"
