@@ -106,18 +106,20 @@ quipu.on('transition', function (data) {
             send('init', 'clear');
 
             client.on('data', function(d) {
-               if (d.toString().slice(0, 4) === 'cmd:') {
-                  var cmdArgs = d.toString().slice(4).split(' ');
+               var command = d.toString().replace('\r', '').replace('\n', '');
+               if (command.toString().slice(0, 4) === 'cmd:') {
+                  debug('command received by TCP : ' + command)
+                  var cmdArgs = command.toString().slice(4).split(' ');
                   commandHandler(cmdArgs, send);
                }
             })
 
-               client.on('end', function() {
-                  console.log("server disconnected");
-                  quipu.handle('close3G');
-                  client.end();
-                  process.exit(1);
-               });
+            client.on('end', function() {
+               console.log("server disconnected");
+               quipu.handle('close3G');
+               client.end();
+               process.exit(1);
+            });
 
          });
 

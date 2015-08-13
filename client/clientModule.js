@@ -38,10 +38,10 @@ function start(connectInfos, callback) {
 			clearInterval(interval);
 			interval = setInterval(heartbeat, (timeout * 1000) / 2);
 			console.log("new timeout set to : " + timeout + " seconds");
-			callback(null, client);
 		}
 		else if (data.toString() === "nameOK") {
 			client.write("timeout?");
+			callback(null, client);
 		}
 	});
 
