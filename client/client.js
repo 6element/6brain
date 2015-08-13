@@ -111,6 +111,14 @@ quipu.on('transition', function (data) {
                   commandHandler(cmdArgs, send);
                }
             })
+
+               client.on('end', function() {
+                  console.log("server disconnected");
+                  quipu.handle('close3G');
+                  client.end();
+                  process.exit(1);
+               });
+
          });
 
      //     // Set the heartbeat message to the network type (2G, 3G...)

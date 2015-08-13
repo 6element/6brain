@@ -45,12 +45,6 @@ function start(connectInfos, callback) {
 		}
 	});
 
-	client.on('end', function() {
-		console.log("server disconnected");
-		client.end();
-		process.exit();
-	});
-
 	client.on('error', function(err){
 		callback(err, client);
 	});
