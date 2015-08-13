@@ -8,9 +8,11 @@ var spawn = require('child_process').spawn;
 var os = require('os');
 var schedule = require('node-schedule');
 
+var PRIVATE = require('./PRIVATE.json');
+
 // Quipu : Handle communication with the modem (internet connection and sms)
 var quipu = require('quipu');
-var PIN = require('./myPINcode.js');
+var PIN = PRIVATE.PIN;
 
 var devices = {
 	modem: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0',
@@ -19,7 +21,7 @@ var devices = {
 
 // TCP : send data through a TCP connection
 var tcpClient = require('./clientModule.js');
-var connectInfo = require('./connectInfo.js');
+var connectInfo = PRIVATE.connectInfo;
 
 // 6sense : Handle the wifi-sensor
 var sensor = require('6sense');

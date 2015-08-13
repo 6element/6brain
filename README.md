@@ -2,21 +2,42 @@
 
 6brain is the core of the 6element sensors. It is responsible for data collection and transmission. It depense on [6sense](https://github.com/anthill/6sense) for data collection and [quipu](https://github.com/anthill/quipu) for transmission through sms.
 
-Juste use `node index.js` to start everything. You should create a file called `client/connectInfo.js` with:
+Juste use `node index.js` to start everything. You should create a file called `PRIVATE.json` with this pattern:
 
 ```
-"use strict";
+{
+    "connectInfo":
+    {
+        "host":"127.0.0.1",
+        "port":1111,
+        "name":"+33600000000",
+        "smsServer":"+33611111111",
+        "authorizedNumbers":["+33611111111", "+33622222222"],
+        "smsMonitoring":false
+    },
+    "PIN":0000
+}
 
-module.exports = {
-    host: "127.0.0.1",                                     // TCP server address
-    port: 1111,                                            // TCP server port
-    name: "NameOfTheSensor",                               // Client name to use (phone number in this case)
-    smsServer: "+33600112233",                             // number of the SMS server
-    authorizedNumbers: ["+33600112233", "+33611223344"],   // numbers who can send commands by SMS
-    smsMonitoring: false                                   // true: send datas by TCP+SMS, false: only TCP
-};
 
 ```
+* connectInfo :
+
+	* host : the tcp server which you want to connect to
+
+	* port : the port of the tcp server
+
+	* name : name of the sensor (phone number in the case of 6element)
+
+	* smsServer : the phone number you want to send data to when smsMonitoring is true
+
+	* authorizedNumbers : phone numbers which can send command to the sensor
+
+	* smsMonitoring : true = send data by TCP + SMS, false = only TCP
+
+* PIN :
+
+	The PIN number of the SIM card.
+
 
 ## Commands
 
