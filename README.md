@@ -2,13 +2,21 @@
 
 6brain is the core of the 6element sensors. It is responsible for data collection and transmission. It depense on [6sense](https://github.com/anthill/6sense) for data collection and [quipu](https://github.com/anthill/quipu) for transmission through sms.
 
-Juste use `node index.js` to start everything. You should have file called `numbers.json` with:
+Juste use `node index.js` to start everything. You should create a file called `client/connectInfo.js` with:
 
 ```
-{"serverNumber": "336xxxxxxxx"}
-```
+"use strict";
 
-where `serverNumber` is the the destination phone number of your server.
+module.exports = {
+    host: "127.0.0.1",                                     // TCP server address
+    port: 1111,                                            // TCP server port
+    name: "NameOfTheSensor",                               // Client name to use (phone number in this case)
+    smsServer: "+33600112233",                             // number of the SMS server
+    authorizedNumbers: ["+33600112233", "+33611223344"],   // numbers who can send commands by SMS
+    smsMonitoring: false                                   // true: send datas by TCP+SMS, false: only TCP
+};
+
+```
 
 ## Commands
 
