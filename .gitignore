@@ -2,3 +2,4 @@
 node_modules
 PRIVATE.json
 client/connectInfo.js
+client/myPINcode.js
