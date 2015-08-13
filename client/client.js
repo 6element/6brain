@@ -62,7 +62,7 @@ function tcpConnect() {
    socket.on('connect', function(){
       console.log('connected to the server');
       tcpSocket = socket;
-      socket.write("name=" + PRIVATE.connectInfo.name);
+      socket.write("phoneNumber=" + PRIVATE.connectInfo.phoneNumber);
    });
 
    socket.on('data', function(data) {
@@ -71,11 +71,6 @@ function tcpConnect() {
          var cmdArgs = data.toString().slice(4).split(' ');
          commandHandler(cmdArgs, send);
       }
-   });
-
-   socket.on('end', function() {
-      console.log("tcp disconnected");
-      setTimeout(tcpConnect, 10000); // Be warning : recursive
    });
 
    socket.on('close', function() {
@@ -223,16 +218,6 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
             case 'pauserecord':          // Pause recording
                sensor.pause();
                sendFunction(command + ':OK', 'generic_encoded');
-               break;
-            case 'open3g':               // Open the 3G connection (SMS ONLY)
-               quipu.handle('open3G');
-               break;
-            case 'close3g':              // Close the 3G connection (SMS ONLY)
-               tunnelInfo =
-                  {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
-               if (tcpSocket)
-                  tcpSocket.end();
-               quipu.handle('close3G');
                break;
             case 'closetunnel':          // Close the SSH tunnel
                tunnelInfo =

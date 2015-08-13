@@ -10,7 +10,7 @@ Juste use `node index.js` to start everything. You should create a file called `
     {
         "host":"127.0.0.1",
         "port":1111,
-        "name":"+33600000000",
+        "phoneNumber":"+33600000000",
         "smsServer":"+33611111111",
         "authorizedNumbers":["+33611111111", "+33622222222"],
         "smsMonitoring":false
@@ -26,7 +26,7 @@ Juste use `node index.js` to start everything. You should create a file called `
 
 	* port : the port of the tcp server
 
-	* name : name of the sensor (phone number in the case of 6element)
+	* phoneNumber : phone number of the sensor (used as unique ID)
 
 	* smsServer : the phone number you want to send data to when smsMonitoring is true
 
