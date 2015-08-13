@@ -24,4 +24,4 @@ WORKDIR /6brain
 COPY . .
 RUN npm install
 
-CMD forever index.js
+CMD forever client/client.js
