@@ -9,7 +9,6 @@ var quipu = require('quipu');
 var sensor = require('6sense');
 var sixSenseCodec = require('6sense/src/codec/encodeForSMS.js')
 var genericCodec = require('quipu/parser.js');
-var getIp = require('./getIp.js');
 
 var PRIVATE = require('./PRIVATE.json');
 
@@ -76,19 +75,17 @@ function tcpConnect() {
 
    socket.on('end', function() {
       console.log("tcp disconnected");
-      tcpConnect();
+      setTimeout(tcpConnect, 10000); // Be warning : recursive
    });
 
    socket.on('close', function() {
       console.log("tcp disconnected");
-      tcpConnect();
+      setTimeout(tcpConnect, 10000); // Be warning : recursive
    });
 
    socket.on('error', function(err){
       console.log("tcp error", err);
-      tcpConnect();
    });
-
 }
 
 // QUIPU BLOCK
@@ -111,7 +108,6 @@ quipu.on('transition', function (data) {
 	if (data.toState === '3G_connected') {
       if (data.fromState === 'initialized') {
    		console.log('3G initialized');
-
          tcpConnect();
       }
 
@@ -120,6 +116,7 @@ quipu.on('transition', function (data) {
       if (tunnelInfo.shouldTunnel) {
          quipu.handle(tunnelInfo.arg1, tunnelInfo.arg2, tunnelInfo.arg3);
          tunnelInfo = {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
+         sendFunction('opentunnel:OK', generic_encoded);
       }
 	}
 });
@@ -138,7 +135,6 @@ quipu.on('smsReceived', function(sms) {
 });
 
 
-
 // 6SENSE BLOCK
 
 sensor.on('processed', function(results) {
@@ -148,7 +144,7 @@ sensor.on('processed', function(results) {
 });
 
 sensor.on('transition', function (data){
-   send(':', 'generic_encoded');
+   send('null:null', 'generic_encoded');
 });
 
 // stop measurments at SLEEP_HOUR_UTC
@@ -242,6 +238,10 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                tunnelInfo =
                   {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
                quipu.handle('closetunnel');
+               if (quipu.state === 'tunnelling')
+                  sendFunction(command + ':OK', 'generic_encoded');
+               else
+                  sendFunction(command + ':KO', 'generic_encoded');
                break;
             case 'ping':                 // Just send 'pong' to the server
                sendFunction('pong');
@@ -267,41 +267,22 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                   }
                break;
             case 'changestarttime':      // Change the hour when it starts recording
-               if (commandArgs[1].toString().match(/^\d{1, 2}$/)) {
+               if (commandArgs[1].toString().match(/^\d{1,2}$/)) {
                   WAKEUP_HOUR_UTC = commandArgs[1];
-                  sendFunction(command + ':OK', 'generic_encoded');
+                  sendFunction(command + ':' + commandArgs[1], 'generic_encoded');
                }
                else
                   sendFunction(command + ':KO', 'generic_encoded');
                break;
             case 'changestoptime':       // Change the hour when it stops recording
-               if (commandArgs[1].toString().match(/^\d{1, 2}$/)) {
+               if (commandArgs[1].toString().match(/^\d{1,2}$/)) {
                   SLEEP_HOUR_UTC = commandArgs[1];
-                  sendFunction(command + ':OK', 'generic_encoded');
+                  sendFunction(command + ':' + commandArgs[1], 'generic_encoded');
                }
                else
                   sendFunction(command + ':KO', 'generic_encoded');
                break;
-            case 'changedestination':    // Change the SMS server
-               if (commandArgs[1].toString().match(/^\+\d{11}$/)) {
-                  smsServer = commandArgs[1].toString();
-                  sendFunction(command + ':OK', 'generic_encoded');
-               }
-               else
-                  sendFunction(command + ':KO', 'generic_encoded');
-               break;
-            case 'smsmonitor':           // set the smsMonitoring mode
-               if (commandArgs[1].toString().toLowerCase() === 'on') {
-                  smsMonitoring = true;
-                  sendFunction(command + ':OK', 'generic_encoded');
-               }
-               else if (commandArgs[1].toString().toLowerCase() === 'off') {
-                  smsMonitoring = false;
-                  sendFunction(command + ':OK', 'generic_encoded');
-               }
-               else
-                  sendFunction(command + ':KO', 'generic_encoded');
-               case 'date':                 // Set the current time (synchronise server and client)
+            case 'date':                 // Set the current time (synchronise server and client)
                   var date = commandArgs[1].replace('T', ' ').split('.')[0];
                   spawn('timedatectl', ['set-time', date]);
 
