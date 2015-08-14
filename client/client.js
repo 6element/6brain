@@ -10,7 +10,7 @@ var sensor = require('6sense');
 var sixSenseCodec = require('6sense/src/codec/encodeForSMS.js')
 var genericCodec = require('quipu/parser.js');
 
-var PRIVATE = require('./PRIVATE.json');
+var PRIVATE = require('../PRIVATE.json');
 
 
 // === to set ===
@@ -25,7 +25,6 @@ var SLEEP_HOUR_UTC = '16';
 // === 
 
 
-var tunnelInfo = {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
 var tcpSocket = undefined;
 
 var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
@@ -68,7 +67,7 @@ function tcpConnect() {
    socket.on('data', function(data) {
       console.log("data received : " + data.toString());
       if (data.toString().slice(0, 4) === 'cmd:') {
-         var cmdArgs = data.toString().slice(4).split(' ');
+         var cmdArgs = data.toString().toLowerCase().slice(4).split(' ');
          commandHandler(cmdArgs, send);
       }
    });
@@ -90,8 +89,6 @@ quipu.handle('initialize', devices, PRIVATE.PIN);
 quipu.on('transition', function (data) {
 	console.log('Transitioned from ' + data.fromState + ' to ' + data.toState);
 
-   if (data.toState === "tunnelling")
-      send('tunnelling')
 
 	if (data.fromState === 'uninitialized' && data.toState === 'initialized') {
 
@@ -106,11 +103,7 @@ quipu.on('transition', function (data) {
          tcpConnect();
       }
 
-      // sensor.record(MEASURE_PERIOD);
-
-      if (tunnelInfo.shouldTunnel) {
-         quipu.handle(tunnelInfo.arg1, tunnelInfo.arg2, tunnelInfo.arg3);
-         tunnelInfo = {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
+      if (data.toState === 'tunnelling') {
          sendFunction('opentunnel:OK', generic_encoded);
       }
 	}
@@ -124,7 +117,7 @@ quipu.on('3G_error', function() {
 quipu.on('smsReceived', function(sms) {
 	console.log('SMS received : \"' + sms.body + '\" ' + 'from \"' + sms.from + '\"');
 	if (sms.body.toString().slice(0, 4) === 'cmd:' && authorizedNumbers.indexOf(sms.from) > -1) {
-		var cmdArgs = sms.body.toString().slice(4).split(' ');
+		var cmdArgs = sms.body.toString().toLowerCase().slice(4).split(' ');
 		commandHandler(cmdArgs, send);
 	}
 });
@@ -195,7 +188,8 @@ function send(message, encode) {
 function commandHandler(commandArgs, sendFunction) { // If a status is sent, his pattern is [command]:[status]
 
    var command = (commandArgs.length >= 1) ? commandArgs[0] : undefined;
-   debug('command received : ' + command + '. callback : ' + sendFunction.name)
+   debug('command received : ' + command + '. callback : ' + sendFunction.name);
+   debug("args :", commandArgs);
 
    switch(commandArgs.length) {
 
@@ -286,14 +280,9 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
       case 4:
          // command with three parameters
          switch(command) {
-            case 'opentunnel':           // Open an SSH tunnel for distant access
-               if (quipu.state !== '3G_connected')
-                  quipu.handle('opentunnel', commandArgs[1], commandArgs[2], commandArgs[3])
-               else {
-                  tunnelInfo =
-                     {shouldTunnel: false, arg1: commandArgs[1], arg2: commandArgs[2], arg3: commandArgs[3]};
-                     quipu.handle('open3G');
-                  }
+            case 'opentunnel':
+               console.log("sending tunnel command");
+               quipu.handle('openTunnel', commandArgs[1], commandArgs[2], commandArgs[3])
                break;
          }
          break;
