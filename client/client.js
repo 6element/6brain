@@ -1,47 +1,34 @@
 "use strict";
 
-/*
-**	This is the client used for 6element (it needs quipu and 6sense)
-*/
-
-var spawn = require('child_process').spawn;
 var os = require('os');
+var spawn = require('child_process').spawn;
 var schedule = require('node-schedule');
+
+var quipu = require('quipu');
+var tcpClient = require('./clientModule.js');
+var sensor = require('6sense');
+var sixSenseCodec = require('6sense/src/codec/encodeForSMS.js')
+var genericCodec = require('quipu/parser.js');
+var getIp = require('./getIp.js');
 
 var PRIVATE = require('./PRIVATE.json');
 
-// Quipu : Handle communication with the modem (internet connection and sms)
-var quipu = require('quipu');
-var PIN = PRIVATE.PIN;
 
+// === to set ===
 var devices = {
 	modem: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0',
 	sms: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0'
 };
 
-// TCP : send data through a TCP connection
-var tcpClient = require('./clientModule.js');
-var connectInfo = PRIVATE.connectInfo;
-
-// 6sense : Handle the wifi-sensor
-var sensor = require('6sense');
-
-// Codecs : encode/compress datas
-var sixSenseCodec = require('6sense/src/codec/encodeForSMS.js')
-var genericCodec = require('quipu/parser.js');
-
-var getIp = require('./getIp.js');
-
 var MEASURE_PERIOD = 300; // in seconds
 var WAKEUP_HOUR_UTC = '07';
 var SLEEP_HOUR_UTC = '16';
+// === 
 
-var smsServer = connectInfo.smsServer ?
-   connectInfo.smsServer : '';
-var authorizedNumbers = connectInfo.authorizedNumbers ?
-   connectInfo.authorizedNumbers : [];
-var smsMonitoring = connectInfo.smsMonitoring ?
-   connectInfo.smsMonitoring : false;
+var connectInfo = PRIVATE.connectInfo;
+var smsServer = connectInfo.smsServer ? connectInfo.smsServer : '';
+var authorizedNumbers = connectInfo.authorizedNumbers ? connectInfo.authorizedNumbers : [];
+var smsMonitoring = connectInfo.smsMonitoring ? connectInfo.smsMonitoring : false;
 
 var tunnelInfo = {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
 var tcpSocket = undefined;
@@ -71,7 +58,9 @@ var debug = function() {
 // 	return '0';
 // }
 
-quipu.handle('initialize', devices, PIN);
+// QUIPU BLOCK
+
+quipu.handle('initialize', devices, PRIVATE.PIN);
 
 quipu.on('transition', function (data) {
 	console.log('Transitioned from ' + data.fromState + ' to ' + data.toState);
@@ -143,6 +132,8 @@ quipu.on('smsReceived', function(sms) {
 	}
 });
 
+
+
 // 6SENSE BLOCK
 
 sensor.on('processed', function(results) {
@@ -158,16 +149,18 @@ sensor.on('transition', function (data){
 });
 
 // stop measurments at SLEEP_HOUR_UTC
-schedule.scheduleJob('00 '+SLEEP_HOUR_UTC+' * * *', function(){
+schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
    console.log('Pausing measurments.');
    sensor.pause();
 });
 
 // restart measurments at WAKEUP_HOUR_UTC
-schedule.scheduleJob('00 '+ WAKEUP_HOUR_UTC +' * * *', function(){
+schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
    console.log('Restarting measurments.');
    sensor.record(MEASURE_PERIOD);
 });
+
+
 
 
 // SEND MESSAGE BLOCK
@@ -209,6 +202,7 @@ function send(message, encode) {
       sendTCP('0' + message);
    }
 }
+
 
 
 // COMMAND BLOCK
