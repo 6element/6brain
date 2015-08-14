@@ -9,7 +9,6 @@ var quipu = require('quipu');
 var sensor = require('6sense');
 var sixSenseCodec = require('6sense/src/codec/encodeForSMS.js')
 var genericCodec = require('quipu/parser.js');
-var getIp = require('./getIp.js');
 
 var PRIVATE = require('./PRIVATE.json');
 
