@@ -2,10 +2,10 @@
 
 var os = require('os');
 var spawn = require('child_process').spawn;
+var net = require('net');
 var schedule = require('node-schedule');
 
 var quipu = require('quipu');
-var tcpClient = require('./clientModule.js');
 var sensor = require('6sense');
 var sixSenseCodec = require('6sense/src/codec/encodeForSMS.js')
 var genericCodec = require('quipu/parser.js');
@@ -20,15 +20,11 @@ var devices = {
 	sms: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0'
 };
 
-var MEASURE_PERIOD = 300; // in seconds
+var MEASURE_PERIOD = 10; // in seconds
 var WAKEUP_HOUR_UTC = '07';
 var SLEEP_HOUR_UTC = '16';
 // === 
 
-var connectInfo = PRIVATE.connectInfo;
-var smsServer = connectInfo.smsServer ? connectInfo.smsServer : '';
-var authorizedNumbers = connectInfo.authorizedNumbers ? connectInfo.authorizedNumbers : [];
-var smsMonitoring = connectInfo.smsMonitoring ? connectInfo.smsMonitoring : false;
 
 var tunnelInfo = {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
 var tcpSocket = undefined;
@@ -58,6 +54,43 @@ var debug = function() {
 // 	return '0';
 // }
 
+
+// TCP BLOCK
+function tcpConnect() { 
+
+   var socket = net.connect(PRIVATE.connectInfo);
+
+   socket.on('connect', function(){
+      console.log('connected to the server');
+      tcpSocket = socket;
+      socket.write("name=" + PRIVATE.connectInfo.name);
+   });
+
+   socket.on('data', function(data) {
+      console.log("data received : " + data.toString());
+      if (data.toString().slice(0, 4) === 'cmd:') {
+         var cmdArgs = data.toString().slice(4).split(' ');
+         commandHandler(cmdArgs, send);
+      }
+   });
+
+   socket.on('end', function() {
+      console.log("tcp disconnected");
+      tcpConnect();
+   });
+
+   socket.on('close', function() {
+      console.log("tcp disconnected");
+      tcpConnect();
+   });
+
+   socket.on('error', function(err){
+      console.log("tcp error", err);
+      tcpConnect();
+   });
+
+}
+
 // QUIPU BLOCK
 
 quipu.handle('initialize', devices, PRIVATE.PIN);
@@ -65,10 +98,6 @@ quipu.handle('initialize', devices, PRIVATE.PIN);
 quipu.on('transition', function (data) {
 	console.log('Transitioned from ' + data.fromState + ' to ' + data.toState);
 
-   if (data.toState === "initialized")
-      send('initialized')
-   if (data.toState === "3G_connected")
-      send('3G_connected')
    if (data.toState === "tunnelling")
       send('tunnelling')
 
@@ -78,40 +107,16 @@ quipu.on('transition', function (data) {
 		console.log('opening 3G');
 		quipu.handle('open3G');
 	}
-	else if (data.toState === '3G_connected') {
+
+	if (data.toState === '3G_connected') {
       if (data.fromState === 'initialized') {
    		console.log('3G initialized');
 
-   		tcpClient.start({host: connectInfo.host, port: connectInfo.port, name: connectInfo.name},
-            function(err, client) {
-            if (err) {
-               console.log('[ERROR] : ' + err.message);
-               quipu.handle('close3G')
-               process.exit(-1);
-            }
-
-
-            tcpSocket = client;
-            send('init', 'clear');
-
-            client.on('data', function(d) {
-               if (d.toString().slice(0, 4) === 'cmd:') {
-                  var cmdArgs = d.toString().slice(4).split(' ');
-                  commandHandler(cmdArgs, send);
-               }
-            })
-         });
-
-     //     // Set the heartbeat message to the network type (2G, 3G...)
-   		// quipu.askNetworkType();
-   		// tcpClient.setHeartbeatMessage('net' + getSendableType(quipu.getNetworkType()));
-   		// setInterval(function() {
-			  //  quipu.askNetworkType();
-			  //  tcpClient.setHeartbeatMessage('net' + getSendableType(quipu.getNetworkType()));
-   		// }, tcpClient.timeout < 20 ? tcpClient.timeout * 1000 / 2 : 10000);
+         tcpConnect();
       }
 
-      sensor.record(MEASURE_PERIOD);
+      // sensor.record(MEASURE_PERIOD);
+
       if (tunnelInfo.shouldTunnel) {
          quipu.handle(tunnelInfo.arg1, tunnelInfo.arg2, tunnelInfo.arg3);
          tunnelInfo = {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
@@ -138,8 +143,6 @@ quipu.on('smsReceived', function(sms) {
 
 sensor.on('processed', function(results) {
    sixSenseCodec([results]).then(function(message){
-      if (smsMonitoring)
-         sendSMS('1' + message);
       sendTCP('1' + message);
    });
 });
@@ -165,16 +168,11 @@ schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
 
 // SEND MESSAGE BLOCK
 
-function sendSMS(message) {
-   if (smsServer.match(/^\+{0,1}\d{11}$/))
-      quipu.sendSMS(message, (smsServer.slice(0, 1) !== '+' ? smsServer : smsServer.slice(1)));
-}
-
 function sendTCP(message) {
-   if (tcpClient) {
-      debug('sending message to the TCP server')
-      tcpClient.send(message);
-   }
+   if (tcpSocket)
+      tcpSocket.write(message);
+   else
+      console.log("tcpSocket not ready for message, ", message);
 }
 
 // Encode and send data
@@ -191,14 +189,10 @@ function send(message, encode) {
       };
       genericCodec.encode(body)
       .then(function(newMessage){
-         if (smsMonitoring)
-            sendSMS('2' + newMessage);
          sendTCP('2' + newMessage);
       })
    }
    else {
-      if (smsMonitoring)
-         sendSMS('0' + message);
       sendTCP('0' + message);
    }
 }
@@ -225,11 +219,6 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                break;
             case 'reboot':               // Reboot the system
                spawn('reboot');
-               break;
-            case 'ip':                   // Send the ant's IP (SMS ONLY)
-               var ips = getIp();
-               var response = Object.keys(ips).map(function(k){sendFunction(k+' : '+ips[k])}).join('  ');
-               sendFunction(response);
                break;
             case 'resumerecord':         // Start recording
                sensor.record(MEASURE_PERIOD);
@@ -263,7 +252,8 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
       case 2:
             // command with one parameters
          switch(command) {
-            case 'changeperiod':         // Change the period of recording
+            case 'changeperiod':
+               console.log("")         // Change the period of recording
                if (commandArgs[1].toString().match(/^\d{1,5}$/)) {
                   MEASURE_PERIOD = parseInt(commandArgs[1], 10);
                   sensor.pause();
