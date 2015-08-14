@@ -200,7 +200,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
    switch(commandArgs.length) {
 
       case 1:
-            // command with no parameter
+         // command with no parameter
          switch(command) {
             case 'status':               // Send the quipu and 6sense sensor
                if (sendFunction.name === 'send')
@@ -235,7 +235,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
          break;
 
       case 2:
-            // command with one parameters
+         // command with one parameters
          switch(command) {
             case 'changeperiod':
                console.log("")         // Change the period of recording
@@ -284,7 +284,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
          break;
 
       case 4:
-            // command with three parameters
+         // command with three parameters
          switch(command) {
             case 'opentunnel':           // Open an SSH tunnel for distant access
                if (quipu.state !== '3G_connected')
