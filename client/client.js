@@ -108,31 +108,40 @@ quipu.on('transition', function (data) {
 		quipu.handle('open3G');
       quipu.askNetworkType();
 
-      setInterval(function(){
-         quipu.askNetworkType();
-         var tmp = getSendableSignal(quipu.getNetworkType());
-         if (tmp != signal) {
-            signal = tmp;
-            send('net'+signal, 'clear');
-         }
-      }, 5000);
 	}
 
 	if (data.toState === '3G_connected') {
       if (data.fromState === 'initialized') {
    		console.log('3G initialized');
          tcpConnect();
+
+         // check the connectivity state
+         setInterval(function(){
+            quipu.askNetworkType();
+            var tmp = getSendableSignal(quipu.getNetworkType());
+            if (tmp != signal) {
+               signal = tmp;
+               send('net'+signal, 'clear');
+            }
+         }, 5000);
       }
 
-      if (data.toState === 'tunnelling') {
-         sendFunction('opentunnel:OK', generic_encoded);
-      }
 	}
+
+   if (data.fromState === '3G_connected' && data.toState === 'tunnelling') {
+      send('opentunnel:OK', "generic_encoded");
+   }
+
 });
 
 quipu.on('3G_error', function() {
    console.log('exiting');
    process.exit(-1);
+});
+
+quipu.on('tunnelError', function() {
+   console.log('tunnel error');
+   send('opentunnel:KO', "generic_encoded");
 });
 
 quipu.on('smsReceived', function(sms) {
@@ -217,10 +226,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
          // command with no parameter
          switch(command) {
             case 'status':               // Send the quipu and 6sense sensor
-               if (sendFunction.name === 'send')
-                  sendFunction(command + ':OK', 'generic_encoded')
-               else
-                  sendFunction("quipu: " + quipu.state + ",sensor : " + sensor.state);
+               sendFunction(command + ':OK', 'generic_encoded')
                break;
             case 'reboot':               // Reboot the system
                spawn('reboot');
@@ -235,10 +241,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                break;
             case 'closetunnel':          // Close the SSH tunnel
                quipu.handle('closeTunnel');
-               if (quipu.state === 'tunnelling')
-                  sendFunction(command + ':OK', 'generic_encoded');
-               else
-                  sendFunction(command + ':KO', 'generic_encoded');
+               sendFunction(command + ':OK', 'generic_encoded');
                break;
             case 'ping':                 // Just send 'pong' to the server
                sendFunction('pong');
