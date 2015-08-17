@@ -253,21 +253,26 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
          // command with one parameters
          switch(command) {
             case 'changeperiod':
-               console.log("")         // Change the period of recording
                if (commandArgs[1].toString().match(/^\d{1,5}$/)) {
                   MEASURE_PERIOD = parseInt(commandArgs[1], 10);
+                  
                   sensor.pause();
-
                   setTimeout(function(){
-                     sensor.record(MEASURE_PERIOD);
+                     var date = new Date();
+                     var current_hour = date.getHours();
+                     if (current_hour < parseInt(SLEEP_HOUR_UTC) && current_hour >= parseInt(WAKEUP_HOUR_UTC)){
+                        sensor.record(MEASURE_PERIOD);
+                     }
                      sendFunction(command + ':' + commandArgs[1], 'generic_encoded');
-                     }, 3000)
-                  } else {
-                     console.log('Period is not an integer ', commandArgs[1]);
-                  }
+                  }, 3000);
+                     
+               } else {
+                  console.log('Period is not an integer ', commandArgs[1]);
+                  sendFunction(command + ':KO', 'generic_encoded');
+               }
                break;
             case 'changestarttime':      // Change the hour when it starts recording
-               if (commandArgs[1].toString().match(/^\d{1,2}$/)) {
+               if (commandArgs[1].match(/^\d{1,2}$/)) {
                   WAKEUP_HOUR_UTC = commandArgs[1];
                   sendFunction(command + ':' + commandArgs[1], 'generic_encoded');
                }
@@ -275,7 +280,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                   sendFunction(command + ':KO', 'generic_encoded');
                break;
             case 'changestoptime':       // Change the hour when it stops recording
-               if (commandArgs[1].toString().match(/^\d{1,2}$/)) {
+               if (commandArgs[1].match(/^\d{1,2}$/)) {
                   SLEEP_HOUR_UTC = commandArgs[1];
                   sendFunction(command + ':' + commandArgs[1], 'generic_encoded');
                }
@@ -285,11 +290,6 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
             case 'date':
                   var date = commandArgs[1].replace('t', ' ').split('.')[0];
                   spawn('timedatectl', ['set-time', date]);
-
-                  // check if current time is valid and record consequently
-                  var current_hour = new Date().getHours();
-                  if (current_hour <= parseInt(SLEEP_HOUR_UTC) && current_hour >= parseInt(WAKEUP_HOUR_UTC))
-                     sensor.record(MEASURE_PERIOD);
 
                   setTimeout(function(){
                      sendFunction(command + ':OK', 'generic_encoded');
