@@ -121,7 +121,7 @@ quipu.on('transition', function (data) {
             var tmp = getSendableSignal(quipu.getNetworkType());
             if (tmp != signal) {
                signal = tmp;
-               send('net'+signal, 'clear');
+               sendTCP('net'+signal, 'clear'); // Not send because it doesn't start with 0
             }
          }, 5000);
       }
