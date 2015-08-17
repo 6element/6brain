@@ -234,7 +234,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                sendFunction(command + ':OK', 'generic_encoded');
                break;
             case 'closetunnel':          // Close the SSH tunnel
-               quipu.handle('closetunnel');
+               quipu.handle('closeTunnel');
                if (quipu.state === 'tunnelling')
                   sendFunction(command + ':OK', 'generic_encoded');
                else
