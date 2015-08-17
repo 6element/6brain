@@ -24,6 +24,7 @@ var WAKEUP_HOUR_UTC = '07';
 var SLEEP_HOUR_UTC = '16';
 // === 
 
+var signal = 'NODATA';
 
 var tcpSocket = undefined;
 
@@ -37,20 +38,20 @@ var debug = function() {
    };
 }
 
-// // Transform a networkType (as returned by AT^SYSINFO) in a sendable data
-// function getSendableType(type) {
-// 	if (type === undefined || type < 2)
-// 		return '0';	// No internet
-// 	if (type === 2)
-// 		return '1';	// GPRS
-// 	if (type === 3)
-// 		return '2';	// EDGE
-// 	if (type === 4)
-// 		return '3';	// 3G
-// 	if (type > 4)
-// 		return '4';	// 3G+ or better
-// 	return '0';
-// }
+// Transform a networkType (as returned by AT^SYSINFO) in a sendable data
+function getSendableSignal(signal) {
+	if (signal === undefined || signal < 2)
+		return 'NODATA';	// No internet
+	if (signal === 2)
+		return 'GPRS';	// GPRS
+	if (signal === 3)
+		return 'EDGE';	// EDGE
+	if (signal === 4)
+		return '3G';	// 3G
+	if (signal > 4)
+		return 'H/H+';	// 3G+ or better
+	return 'unknown';
+}
 
 
 // TCP BLOCK
@@ -95,6 +96,16 @@ quipu.on('transition', function (data) {
 		console.log('quipu initialized');
 		console.log('opening 3G');
 		quipu.handle('open3G');
+      quipu.askNetworkType();
+
+      setInterval(function(){
+         quipu.askNetworkType();
+         var tmp = getSendableSignal(quipu.getNetworkType());
+         if (tmp != signal) {
+            signal = tmp;
+            send('net'+signal, 'clear');
+         }
+      }, 5000);
 	}
 
 	if (data.toState === '3G_connected') {
@@ -165,11 +176,10 @@ function send(message, encode) {
       var body = {
       info:
          {command: message.split(':')[0], result: message.split(':')[1]},
-         quipu: {
-            state: quipu.state,
-            signal: quipu.signalStrength
-         },
-         sense: sensor.state,
+      quipu: {
+         state: quipu.state,
+      },
+      sense: sensor.state
       };
       genericCodec.encode(body)
       .then(function(newMessage){
@@ -239,7 +249,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
 
                   setTimeout(function(){
                      sensor.record(MEASURE_PERIOD);
-                     sendFunction(command + ':OK', 'generic_encoded');
+                     sendFunction(command + ':' + commandArgs[1], 'generic_encoded');
                      }, 3000)
                   } else {
                      console.log('Period is not an integer ', commandArgs[1]);
