@@ -25,9 +25,7 @@ var SLEEP_HOUR_UTC = '16';
 // === 
 
 var signal = 'NODATA';
-
 var tcpSocket = undefined;
-
 var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
 
 
@@ -62,12 +60,13 @@ function tcpConnect() {
    socket.on('connect', function(){
       console.log('connected to the server');
       tcpSocket = socket;
-      socket.write("phoneNumber=" + PRIVATE.connectInfo.phoneNumber);
+      sendTCP("phoneNumber=" + PRIVATE.connectInfo.phoneNumber)
    });
 
    var chunk = "";
    var d_index;
    socket.on('data', function(data) {
+      console.log('tcp data: ', data.toString());
       // accumulate tcp stream until \n meaning new chunk
       chunk += data.toString();
       d_index = chunk.indexOf('\n');
@@ -177,7 +176,7 @@ schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
 
 function sendTCP(message) {
    if (tcpSocket)
-      tcpSocket.write(message);
+      tcpSocket.write(message + "\n");
    else
       console.log("tcpSocket not ready for message, ", message);
 }
