@@ -66,7 +66,6 @@ function tcpConnect() {
    var chunk = "";
    var d_index;
    socket.on('data', function(data) {
-      console.log('tcp data: ', data.toString());
       // accumulate tcp stream until \n meaning new chunk
       chunk += data.toString();
       d_index = chunk.indexOf('\n');
@@ -235,8 +234,6 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                sendFunction(command + ':OK', 'generic_encoded');
                break;
             case 'closetunnel':          // Close the SSH tunnel
-               tunnelInfo =
-                  {shouldTunnel: false, arg1: undefined, arg2: undefined, arg3: undefined};
                quipu.handle('closetunnel');
                if (quipu.state === 'tunnelling')
                   sendFunction(command + ':OK', 'generic_encoded');
