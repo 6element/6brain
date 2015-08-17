@@ -64,12 +64,24 @@ function tcpConnect() {
       socket.write("phoneNumber=" + PRIVATE.connectInfo.phoneNumber);
    });
 
+   var chunk = "";
+   var d_index;
    socket.on('data', function(data) {
-      console.log("data received : " + data.toString());
-      if (data.toString().slice(0, 4) === 'cmd:') {
-         var cmdArgs = data.toString().toLowerCase().slice(4).split(' ');
-         commandHandler(cmdArgs, send);
-      }
+      // accumulate tcp stream until \n meaning new chunk
+      chunk += data.toString();
+      d_index = chunk.indexOf('\n');
+
+      while (d_index > -1) {         
+         var message = chunk.substring(0, d_index); // Create string up until the delimiter
+         console.log("data received : " + message);
+         if (message.slice(0, 4) === 'cmd:') {
+            var cmdArgs = message.toLowerCase().slice(4).split(' ');
+            commandHandler(cmdArgs, send);
+         }         
+         chunk = chunk.substring(d_index + 1); // Cuts off the processed chunk
+         d_index = chunk.indexOf('\n'); // Find the new delimiter
+      } 
+
    });
 
    socket.on('close', function() {
@@ -261,13 +273,13 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                else
                   sendFunction(command + ':KO', 'generic_encoded');
                break;
-            case 'date':                 // Set the current time (synchronise server and client)
-                  var date = commandArgs[1].replace('T', ' ').split('.')[0];
+            case 'date':
+                  var date = commandArgs[1].replace('t', ' ').split('.')[0];
                   spawn('timedatectl', ['set-time', date]);
 
                   // check if current time is valid and record consequently
                   var current_hour = new Date().getHours();
-                  if (current_hour <= SLEEP_HOUR_UTC && current_hour >= WAKEUP_HOUR_UTC)
+                  if (current_hour <= parseInt(SLEEP_HOUR_UTC) && current_hour >= parseInt(WAKEUP_HOUR_UTC))
                      sensor.record(MEASURE_PERIOD);
 
                   setTimeout(function(){
