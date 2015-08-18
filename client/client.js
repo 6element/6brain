@@ -105,7 +105,7 @@ quipu.on('transition', function (data) {
 
         console.log('quipu initialized');
         console.log('opening 3G');
-        quipu.handle('open3G', PRIVATE.apn);
+        quipu.handle('open3G', PRIVATE.connectInfo.apn);
         quipu.askNetworkType();
 
     }
