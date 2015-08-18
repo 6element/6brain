@@ -94,7 +94,7 @@ function tcpConnect() {
 }
 
 // QUIPU BLOCK
-
+spawn('killall', ["pppd"]);
 quipu.handle('initialize', devices, PRIVATE.PIN);
 
 quipu.on('transition', function (data) {
@@ -286,7 +286,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                else
                   sendFunction(command + ':KO', 'generic_encoded');
                break;
-            case 'date':
+            case 'date':o
                   var date = commandArgs[1].replace('t', ' ').split('.')[0];
                   spawn('timedatectl', ['set-time', date]);
                   restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
