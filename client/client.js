@@ -94,7 +94,7 @@ function tcpConnect() {
 }
 
 // QUIPU BLOCK
-
+spawn('killall', ["pppd"]);
 quipu.handle('initialize', devices, PRIVATE.PIN);
 
 quipu.on('transition', function (data) {
