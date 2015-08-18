@@ -12,7 +12,7 @@ module.exports = function() {
       var alias = 0;
 
       ifaces[ifname].forEach(function (iface) {
-         if ('IPv4' !== iface.family || iface.internal !== false) {
+         if (iface.family !== 'IPv4' || iface.internal !== false) {
             // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
             return;
          }

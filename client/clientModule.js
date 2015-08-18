@@ -3,7 +3,7 @@
 var net = require('net');
 
 var client;
-var timeout = 7200, lastmessage = 0; // Default timeout is set to send one heartbeat per hour
+var timeout = 7200/*, lastmessage = 0;*/ // Default timeout is set to send one heartbeat per hour
 var interval;
 var heartbeatMessage = "*";
 
