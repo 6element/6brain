@@ -165,7 +165,7 @@ sensor.on('transition', function (data){
    send('null:null', 'generic_encoded');
 });
 
-var restart6senseIfNeeded = function(callback){
+var restart6senseIfNeeded = function(returnMessage){
    sensor.pause();
    setTimeout(function(){
       var date = new Date();
@@ -173,7 +173,7 @@ var restart6senseIfNeeded = function(callback){
       if (current_hour < parseInt(SLEEP_HOUR_UTC) && current_hour >= parseInt(WAKEUP_HOUR_UTC)){
          sensor.record(MEASURE_PERIOD);
       }
-      callback();
+      send(returnMessage);
    }, 3000);
 }
 
@@ -264,7 +264,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
             case 'changeperiod':
                if (commandArgs[1].toString().match(/^\d{1,5}$/)) {
                   MEASURE_PERIOD = parseInt(commandArgs[1], 10);
-                  restart6senseIfNeeded(sendFunction(command + ':' + commandArgs[1], 'generic_encoded'));
+                  restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
                } else {
                   console.log('Period is not an integer ', commandArgs[1]);
                   sendFunction(command + ':KO', 'generic_encoded');
@@ -273,7 +273,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
             case 'changestarttime':      // Change the hour when it starts recording
                if (commandArgs[1].match(/^\d{1,2}$/)) {
                   WAKEUP_HOUR_UTC = commandArgs[1];
-                  restart6senseIfNeeded(sendFunction(command + ':' + commandArgs[1], 'generic_encoded'));
+                  restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
                }
                else
                   sendFunction(command + ':KO', 'generic_encoded');
@@ -281,7 +281,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
             case 'changestoptime':       // Change the hour when it stops recording
                if (commandArgs[1].match(/^\d{1,2}$/)) {
                   SLEEP_HOUR_UTC = commandArgs[1];
-                  restart6senseIfNeeded(sendFunction(command + ':' + commandArgs[1], 'generic_encoded'));
+                  restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
                }
                else
                   sendFunction(command + ':KO', 'generic_encoded');
@@ -289,7 +289,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
             case 'date':
                   var date = commandArgs[1].replace('t', ' ').split('.')[0];
                   spawn('timedatectl', ['set-time', date]);
-                  restart6senseIfNeeded(sendFunction(command + ':' + commandArgs[1], 'generic_encoded'));
+                  restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
                break;
          }
          break;
@@ -301,13 +301,22 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                debug("sending tunnel command");
                quipu.handle('openTunnel', commandArgs[1], commandArgs[2], commandArgs[3])
                break;
+         }
+         break;
+
+      case 5:
+         // command with three parameters
+         switch(command) {
             case 'init':
                debug("received init command");
                if (commandArgs[1].toString().match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
+                  var date = commandArgs[4].replace('t', ' ').split('.')[0];
+                  spawn('timedatectl', ['set-time', date]);
                   MEASURE_PERIOD = parseInt(commandArgs[1], 10);
                   WAKEUP_HOUR_UTC = commandArgs[2];
                   SLEEP_HOUR_UTC = commandArgs[3];
-                  restart6senseIfNeeded(sendFunction(command + ':OK', 'generic_encoded'));
+                  restart6senseIfNeeded(command + ':OK', 'generic_encoded');
+               }
                break;
          }
          break;
