@@ -339,8 +339,21 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                         var date = commandArgs[4].replace('t', ' ').split('.')[0];
                         spawn('timedatectl', ['set-time', date]);
                         MEASURE_PERIOD = parseInt(commandArgs[1], 10);
+
                         WAKEUP_HOUR_UTC = commandArgs[2];
+                        startJob.cancel();
+                        startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
+                            console.log('Restarting measurments.');
+                            sensor.record(MEASURE_PERIOD);
+                        });
+
                         SLEEP_HOUR_UTC = commandArgs[3];
+                        stopJob.cancel();
+                        stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
+                            console.log('Pausing measurments.');
+                            sensor.pause();
+                        });
+
                         restart6senseIfNeeded(command + ':OK', 'generic_encoded');
                     }
                     break;
