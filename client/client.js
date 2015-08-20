@@ -28,6 +28,7 @@ var signal = 'NODATA';
 var tcpSocket = undefined;
 var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
 
+var messageQueue = [];
 
 var debug = function() {
     if (DEBUG) {
@@ -178,25 +179,38 @@ var restart6senseIfNeeded = function(returnMessage, encoding){
 }
 
 // stop measurments at SLEEP_HOUR_UTC
-schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
+var stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
     console.log('Pausing measurments.');
     sensor.pause();
 });
 
 // restart measurments at WAKEUP_HOUR_UTC
-schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
+var startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
     console.log('Restarting measurments.');
     sensor.record(MEASURE_PERIOD);
 });
 
+// Empty the unsent message queue
 
-
+setInterval(function() {
+    if (messageQueue.length > 0)
+        debug('sending the content of the errored messages, size :', messageQueue.length);
+    while (messageQueue.length > 0) {
+        var msg = messageQueue.shift();
+        sendTCP(msg);
+    }
+}, 60 * 1000);
 
 // SEND MESSAGE BLOCK
 
 function sendTCP(message) {
-    if (tcpSocket)
-        tcpSocket.write(message + "\n");
+    if (tcpSocket) {
+        tcpSocket.write(message + "\n", function(err) {
+            if (err) {
+                messageQueue.push(message);
+            }
+        });
+    }
     else
         console.log("tcpSocket not ready for message, ", message);
 }
@@ -274,6 +288,12 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                     if (commandArgs[1].match(/^\d{1,2}$/)) {
                         WAKEUP_HOUR_UTC = commandArgs[1];
                         restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
+
+                        startJob.cancel();
+                        startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
+                            console.log('Restarting measurments.');
+                            sensor.record(MEASURE_PERIOD);
+                        });
                     }
                     else
                         sendFunction(command + ':KO', 'generic_encoded');
@@ -282,11 +302,17 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                     if (commandArgs[1].match(/^\d{1,2}$/)) {
                         SLEEP_HOUR_UTC = commandArgs[1];
                         restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
+
+                        stopJob.cancel();
+                        stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
+                            console.log('Pausing measurments.');
+                            sensor.pause();
+                        });
                     }
                     else
                         sendFunction(command + ':KO', 'generic_encoded');
                     break;
-                case 'date':
+                case 'date':                 // Change the sensor's date
                         var date = commandArgs[1].replace('t', ' ').split('.')[0];
                         spawn('timedatectl', ['set-time', date]);
                         restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
@@ -297,7 +323,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
         case 4:
             // command with three parameters
             switch(command) {
-                case 'opentunnel':
+                case 'opentunnel':           // Open a reverse SSH tunnel
                     debug("sending tunnel command");
                     quipu.handle('openTunnel', commandArgs[1], commandArgs[2], commandArgs[3])
                     break;
@@ -307,7 +333,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
         case 5:
             // command with three parameters
             switch(command) {
-                case 'init':
+                case 'init':                 // Initialize period, start and stop time
                     debug("received init command");
                     if (commandArgs[1].toString().match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
                         var date = commandArgs[4].replace('t', ' ').split('.')[0];
