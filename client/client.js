@@ -4,6 +4,7 @@ var os = require('os');
 var spawn = require('child_process').spawn;
 var net = require('net');
 var schedule = require('node-schedule');
+var fs = require('fs');
 
 var quipu = require('quipu');
 var sensor = require('6sense');
@@ -29,6 +30,7 @@ var tcpSocket = undefined;
 var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
 
 var messageQueue = [];
+var reconnectAttempts = 0;
 
 var debug = function() {
     if (DEBUG) {
@@ -36,6 +38,10 @@ var debug = function() {
         console.log.apply(console, arguments);
     };
 }
+
+// Open a file for measurement logs
+
+var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
 
 // Transform a networkType (as returned by AT^SYSINFO) in a sendable data
 function getSendableSignal(signal) {
@@ -60,6 +66,7 @@ function tcpConnect() {
 
     socket.on('connect', function(){
         console.log('connected to the server');
+        reconnectAttempts = 0;
         tcpSocket = socket;
         sendTCP("phoneNumber=" + PRIVATE.connectInfo.phoneNumber)
     });
@@ -86,6 +93,11 @@ function tcpConnect() {
 
     socket.on('close', function() {
         console.log("tcp disconnected");
+        if (++reconnectAttempts >= 10) {
+            console.log('[ERROR] Impossible to reconnect, restarting 6brain')
+            measurementLogs.close();
+            process.exit(1);
+        }
         setTimeout(tcpConnect, 10000); // Be warning : recursive
     });
 
@@ -147,7 +159,7 @@ quipu.on('tunnelError', function() {
 
 quipu.on('smsReceived', function(sms) {
     console.log('SMS received : \"' + sms.body + '\" ' + 'from \"' + sms.from + '\"');
-    if (sms.body.toString().slice(0, 4) === 'cmd:' && authorizedNumbers.indexOf(sms.from) > -1) {
+    if (sms.body.toString().slice(0, 4) === 'cmd:' && PRIVATE.authorizedNumbers.indexOf(sms.from) > -1) {
         var cmdArgs = sms.body.toString().toLowerCase().slice(4).split(' ');
         commandHandler(cmdArgs, send);
     }
@@ -159,6 +171,7 @@ quipu.on('smsReceived', function(sms) {
 sensor.on('processed', function(results) {
     sixSenseCodec([results]).then(function(message){
         sendTCP('1' + message);
+        measurementLogs.write('1' + message + '\n');
     });
 });
 

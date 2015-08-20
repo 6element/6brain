@@ -12,10 +12,10 @@ Juste use `node index.js` to start everything. You should create a file called `
         "port":1111,
         "phoneNumber":"+33600000000",
         "apn":"orange",
-        "smsServer":"+33611111111",
-        "authorizedNumbers":["+33611111111", "+33622222222"],
-        "smsMonitoring":false
     },
+    "smsServer":"+33611111111",
+    "authorizedNumbers":["+33611111111", "+33622222222"],
+    "smsMonitoring":false
     "PIN": "0000"
 }
 
@@ -29,11 +29,11 @@ Juste use `node index.js` to start everything. You should create a file called `
 
 	* phoneNumber : phone number of the sensor (used as unique ID)
 
-	* smsServer : the phone number you want to send data to when smsMonitoring is true
+* smsServer : the phone number you want to send data to when smsMonitoring is true
 
-	* authorizedNumbers : phone numbers which can send command to the sensor
+* authorizedNumbers : phone numbers which can send command to the sensor
 
-	* smsMonitoring : true = send data by TCP + SMS, false = only TCP
+* smsMonitoring : true = send data by TCP + SMS, false = only TCP
 
 * PIN :
 
