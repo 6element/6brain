@@ -11,11 +11,12 @@ Juste use `node index.js` to start everything. You should create a file called `
         "host":"127.0.0.1",
         "port":1111,
         "phoneNumber":"+33600000000",
+        "apn":"orange",
         "smsServer":"+33611111111",
         "authorizedNumbers":["+33611111111", "+33622222222"],
         "smsMonitoring":false
     },
-    "PIN":0000
+    "PIN": "0000"
 }
 
 
