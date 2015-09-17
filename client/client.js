@@ -170,6 +170,10 @@ quipu.on('smsReceived', function(sms) {
 
 // 6SENSE BLOCK
 
+sensor.on('monitorError', function (error) {
+    spawn('reboot');
+})
+
 sensor.on('processed', function(results) {
     sixSenseCodec([results]).then(function(message){
         sendTCP('1' + message);
@@ -223,6 +227,7 @@ function sendTCP(message) {
         tcpSocket.write(message + "\n", function(err) {
             if (err) {
                 messageQueue.push(message);
+                console.log('[ERROR] Error while sending a message :', err);
             }
         });
     }
