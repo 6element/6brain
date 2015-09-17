@@ -1,6 +1,6 @@
 {
   "name": "6brain",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,7 @@
   "dependencies": {
     "6sense": "0.1.2",
     "node-schedule": "^0.2.6",
-    "quipu": "0.1.5",
+    "quipu": "0.1.7",
     "request": "^2.58.0",
     "serialport": "~1.7.4",
     "machina": "~1.1.2",

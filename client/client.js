@@ -15,10 +15,12 @@ var PRIVATE = require('../PRIVATE.json');
 
 
 // === to set ===
-var devices = {
-    modem: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0',
-    sms: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0'
-};
+var devices = "SIM908";
+
+// var devices = {
+//     modem: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0',
+//     sms: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0'
+// };
 
 var MEASURE_PERIOD = 10; // in seconds
 var WAKEUP_HOUR_UTC = '07';
@@ -168,6 +170,10 @@ quipu.on('smsReceived', function(sms) {
 
 // 6SENSE BLOCK
 
+sensor.on('monitorError', function (error) {
+    spawn('reboot');
+})
+
 sensor.on('processed', function(results) {
     sixSenseCodec([results]).then(function(message){
         sendTCP('1' + message);
@@ -221,6 +227,7 @@ function sendTCP(message) {
         tcpSocket.write(message + "\n", function(err) {
             if (err) {
                 messageQueue.push(message);
+                console.log('[ERROR] Error while sending a message :', err);
             }
         });
     }
@@ -344,7 +351,7 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
             break;
 
         case 5:
-            // command with three parameters
+            // command with four parameters
             switch(command) {
                 case 'init':                 // Initialize period, start and stop time
                     debug("received init command");
