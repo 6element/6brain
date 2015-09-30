@@ -27,7 +27,7 @@ var WAKEUP_HOUR_UTC = '07';
 var SLEEP_HOUR_UTC = '16';
 // ===
 
-var simId = "12345";
+var simId;
 
 var signal = 'NODATA';
 var DEBUG = process.env.DEBUG || false;
