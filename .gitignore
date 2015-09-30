@@ -6,3 +6,5 @@ client/myPINcode.js
 client/PRIVATE.json
 clientMock/
 *.csv
+measurements.log
+npm-debug.log

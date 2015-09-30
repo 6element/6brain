@@ -1,38 +1,39 @@
 "use strict";
 
 var os = require('os');
+var mqtt = require('mqtt')
 var spawn = require('child_process').spawn;
-var net = require('net');
 var schedule = require('node-schedule');
 var fs = require('fs');
 
 var quipu = require('quipu');
-var sensor = require('6sense');
-var sixSenseCodec = require('6sense/src/codec/encodeForSMS.js')
-var genericCodec = require('quipu/parser.js');
+var wifi = require('6sense').wifi;
+var bluetooth = require('6sense').bluetooth;
+var sixSenseCodec = require('pheromon-codecs')
 
 var PRIVATE = require('../PRIVATE.json');
 
 
 // === to set ===
-var devices = "SIM908";
+// var devices = "SIM908";
 
-// var devices = {
-//     modem: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0',
-//     sms: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0'
-// };
+var devices = {
+    modem: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0',
+    sms: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0'
+};
 
-var MEASURE_PERIOD = 10; // in seconds
+var MEASURE_PERIOD = 300; // in seconds
 var WAKEUP_HOUR_UTC = '07';
 var SLEEP_HOUR_UTC = '16';
 // ===
 
-var signal = 'NODATA';
-var tcpSocket = undefined;
-var DEBUG = process.env.DEBUG ? process.env.DEBUG : false;
+var simId = "12345";
 
-var messageQueue = [];
+var signal = 'NODATA';
+var DEBUG = process.env.DEBUG || false;
+
 var reconnectAttempts = 0;
+var simIdAttempts = 0;
 
 var debug = function() {
     if (DEBUG) {
@@ -41,74 +42,115 @@ var debug = function() {
     };
 }
 
-// Open a file for measurement logs
+// mqtt client
+var client;
 
+// Open a file for measurement logs
 var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
 
-// Transform a networkType (as returned by AT^SYSINFO) in a sendable data
-function getSendableSignal(signal) {
-    if (signal === undefined || signal < 2)
-        return 'NODATA';    // No internet
-    if (signal === 2)
-        return 'GPRS';  // GPRS
-    if (signal === 3)
-        return 'EDGE';  // EDGE
-    if (signal === 4)
-        return '3G';    // 3G
-    if (signal > 4)
-        return 'H/H+';  // 3G+ or better
-    return 'unknown';
+
+// MQTT BLOCK
+
+/*
+** Subscribed on :
+**  all
+**  simId
+**
+** Publish on :
+**  init/simId
+**  status/simId/wifi
+**  status/simId/blue
+**  status/simId/quipu
+**  measurement/simId/wifi
+**  measurement/simId/blue
+**  cmdResult/simId
+*/
+
+function send(topic, message) {
+    if (client)
+        client.publish(topic, message);
+    else {
+        debug("mqtt client not ready");
+        setTimeout(function() {
+            send(topic, message);
+        }, 10000);
+    }
 }
 
+function mqttConnect() {
 
-// TCP BLOCK
-function tcpConnect() {
+    if (simId === undefined) {
 
-    var socket = net.connect(PRIVATE.connectInfo);
-
-    socket.on('connect', function(){
-        console.log('connected to the server');
-        reconnectAttempts = 0;
-        tcpSocket = socket;
-        sendTCP("phoneNumber=" + PRIVATE.connectInfo.phoneNumber)
-    });
-
-    var chunk = "";
-    var d_index;
-    socket.on('data', function(data) {
-        // accumulate tcp stream until \n meaning new chunk
-        chunk += data.toString();
-        d_index = chunk.indexOf('\n');
-
-        while (d_index > -1) {
-            var message = chunk.substring(0, d_index); // Create string up until the delimiter
-            console.log("data received : " + message);
-            if (message.slice(0, 4) === 'cmd:') {
-                var cmdArgs = message.toLowerCase().slice(4).split(' ');
-                commandHandler(cmdArgs, send);
-            }
-            chunk = chunk.substring(d_index + 1); // Cuts off the processed chunk
-            d_index = chunk.indexOf('\n'); // Find the new delimiter
+        if (++simIdAttempts >= 10) {
+            console.log('[ERROR] Cannot retrieve simId, restarting 6brain.');
+            process.exit(1);
         }
+        setTimeout(mqttConnect, 10000);
+        return ;
+    }
+    else
+        simIdAttempts = 0;
+    var reconnectAttempts = 0;
 
+    client = mqtt.connect('mqtt://' + PRIVATE.connectInfo.host + ':' + PRIVATE.connectInfo.port,
+                    {
+                        username: simId,
+                        password: PRIVATE.connectInfo.password,
+                        clientId: simId
+                    });
+
+    client.on('connect', function(){
+        reconnectAttempts = 0;
+        console.log('connected to the server');
+        client.subscribe('all');
+        client.subscribe(simId);
+        send('init/' + simId, '');
     });
 
-    socket.on('close', function() {
-        console.log("tcp disconnected");
+    client.on('message', function(topic, message) {
+        // message is a Buffer
+        console.log("data received : " + message.toString());
+
+        switch(topic) {
+
+            case 'all':
+                debug('Broadcast received :', message.toString());
+                commandHandler(message.toString(), send, 'cmdResult/'+simId) // The topic isn't definitive
+                break;
+
+            case simId:
+                commandHandler(message.toString(), send, 'cmdResult/'+simId) // The topic isn't definitive
+                break;
+
+            // TODO : Add command reception
+        }
+    });
+
+    client.on('close', function() {
+        console.log('MQTT disconnection');
+
         if (++reconnectAttempts >= 10) {
             console.log('[ERROR] Impossible to reconnect, restarting 6brain')
             measurementLogs.close();
             process.exit(1);
         }
-        setTimeout(tcpConnect, 10000); // Be warning : recursive
+
+        setTimeout(mqttConnect, 10000); // Be warning : recursive
     });
 
-    socket.on('error', function(err){
-        console.log("tcp error", err);
+    client.on('error', function(err){
+        console.log('MQTT error while connecting :', err)
+        if (++reconnectAttempts >= 10) {
+            console.log('[ERROR] Impossible to connect, restarting 6brain')
+            measurementLogs.close();
+            process.exit(1);
+        }
+        setTimeout(mqttConnect, 10000); // Be warning : recursive
     });
 }
 
 // QUIPU BLOCK
+
 spawn('killall', ["pppd"]);
 quipu.handle('initialize', devices, PRIVATE.PIN);
 
@@ -128,25 +170,19 @@ quipu.on('transition', function (data) {
     if (data.toState === '3G_connected') {
         if (data.fromState === 'initialized') {
             console.log('3G initialized');
-            tcpConnect();
+            mqttConnect();
 
-            // check the connectivity state
-            setInterval(function(){
-                quipu.askNetworkType();
-                var tmp = getSendableSignal(quipu.getNetworkType());
-                if (tmp != signal) {
-                    signal = tmp;
-                    sendTCP('net'+signal, 'clear'); // Not send because it doesn't start with 0
-                }
-            }, 5000);
+            // ask the connection type.
+            setInterval(quipu.askNetworkType, 10000);
         }
 
     }
 
     if (data.fromState === '3G_connected' && data.toState === 'tunnelling') {
-        send('opentunnel:OK', "generic_encoded");
+        send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'OK'}));
     }
 
+    send('status/'+simId+'/quipu', data.toState);
 });
 
 quipu.on('3G_error', function() {
@@ -154,116 +190,103 @@ quipu.on('3G_error', function() {
     process.exit(-1);
 });
 
-quipu.on('tunnelError', function() {
+quipu.on('tunnelError', function(err) {
     console.log('tunnel error');
-    send('opentunnel:KO', "generic_encoded");
+    send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'Error : '+err}));
 });
 
 quipu.on('smsReceived', function(sms) {
     console.log('SMS received : \"' + sms.body + '\" ' + 'from \"' + sms.from + '\"');
     if (sms.body.toString().slice(0, 4) === 'cmd:' && PRIVATE.authorizedNumbers.indexOf(sms.from) > -1) {
-        var cmdArgs = sms.body.toString().toLowerCase().slice(4).split(' ');
-        commandHandler(cmdArgs, send);
+        var cmdArgs = sms.body.toString().toLowerCase().slice(4);
+        commandHandler(cmdArgs, send, 'cmdResult/'+simId);
     }
 });
 
+quipu.on('simId', function(_simId) {
+    simId = _simId;
+    console.log('simId retrieved :', simId);
+});
+
+quipu.on('networkType', function(networkType) {
+    if (networkType !== signal) {
+        signal = networkType;
+        // TODO ? Send signal to the server
+    }
+})
 
 // 6SENSE BLOCK
 
-sensor.on('monitorError', function (error) {
+var restart6senseIfNeeded = function(){
+    return new Promise(function (resolve) {
+        wifi.pause();
+        bluetooth.pause();
+        setTimeout(function(){
+            var date = new Date();
+            var current_hour = date.getHours();
+            if (current_hour < parseInt(SLEEP_HOUR_UTC) && current_hour >= parseInt(WAKEUP_HOUR_UTC)){
+                wifi.record(MEASURE_PERIOD);
+                bluetooth.record(MEASURE_PERIOD);
+            }
+            resolve();
+        }, 3000);
+    });
+}
+
+// stop measurements at SLEEP_HOUR_UTC
+var stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
+    console.log('Pausing measurements.');
+    wifi.pause();
+    bluetooth.pause();
+});
+
+// restart measurements at WAKEUP_HOUR_UTC
+var startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
+    console.log('Restarting measurements.');
+    wifi.record(MEASURE_PERIOD);
+    bluetooth.record(MEASURE_PERIOD);
+});
+
+
+
+// 6SENSE WIFI BLOCK
+
+wifi.on('monitorError', function (error) {
     spawn('reboot');
 })
 
-sensor.on('processed', function(results) {
+wifi.on('processed', function(results) {
     sixSenseCodec([results]).then(function(message){
-        sendTCP('1' + message);
-        measurementLogs.write('1' + message + '\n');
+        send('measurement/'+simId+'/wifi', message);
+        measurementLogs.write(message + '\n');
     });
 });
 
-sensor.on('transition', function (data){
-    send('null:null', 'generic_encoded');
+wifi.on('transition', function (status){
+    send('status/'+simId+'/wifi', status);
 });
 
-var restart6senseIfNeeded = function(returnMessage, encoding){
-    sensor.pause();
-    setTimeout(function(){
-        var date = new Date();
-        var current_hour = date.getHours();
-        if (current_hour < parseInt(SLEEP_HOUR_UTC) && current_hour >= parseInt(WAKEUP_HOUR_UTC)){
-            sensor.record(MEASURE_PERIOD);
-        }
-        send(returnMessage, encoding);
-    }, 3000);
-}
 
-// stop measurments at SLEEP_HOUR_UTC
-var stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
-    console.log('Pausing measurments.');
-    sensor.pause();
+// 6SENSE BLUETOOTH BLOCK
+
+bluetooth.on('processed', function(results) {
+    sixSenseCodec([results]).then(function(message){
+        send('measurement/'+simId+'/bluetooth', message);
+        measurementLogs.write(message + '\n');
+    });
 });
 
-// restart measurments at WAKEUP_HOUR_UTC
-var startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
-    console.log('Restarting measurments.');
-    sensor.record(MEASURE_PERIOD);
+bluetooth.on('transition', function (status){
+    send('status/'+simId+'/bluetooth', status);
 });
-
-// Empty the unsent message queue
-
-setInterval(function() {
-    if (messageQueue.length > 0)
-        debug('sending the content of the errored messages, size :', messageQueue.length);
-    while (messageQueue.length > 0) {
-        var msg = messageQueue.shift();
-        sendTCP(msg);
-    }
-}, 60 * 1000);
-
-// SEND MESSAGE BLOCK
-
-function sendTCP(message) {
-    if (tcpSocket) {
-        tcpSocket.write(message + "\n", function(err) {
-            if (err) {
-                messageQueue.push(message);
-                console.log('[ERROR] Error while sending a message :', err);
-            }
-        });
-    }
-    else
-        console.log("tcpSocket not ready for message, ", message);
-}
-
-// Encode and send data
-function send(message, encode) {
-    if (encode === 'generic_encoded') {
-        var body = {
-        info:
-            {command: message.split(':')[0], result: message.split(':')[1]},
-        quipu: {
-            state: quipu.state,
-        },
-        sense: sensor.state
-        };
-        genericCodec.encode(body)
-        .then(function(newMessage){
-            sendTCP('2' + newMessage);
-        })
-    }
-    else {
-        sendTCP('0' + message);
-    }
-}
-
-
 
 // COMMAND BLOCK
 
-function commandHandler(commandArgs, sendFunction) { // If a status is sent, his pattern is [command]:[status]
+function commandHandler(fullCommand, sendFunction, topic) { // If a status is sent, his pattern is [command]:[status]
 
+    var commandArgs = fullCommand.split(' ');
     var command = (commandArgs.length >= 1) ? commandArgs[0] : undefined;
-    debug('command received : ' + command + '. callback : ' + sendFunction.name);
+    debug('command received : ' + command);
     debug("args :", commandArgs);
 
     switch(commandArgs.length) {
@@ -271,23 +294,29 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
         case 1:
             // command with no parameter
             switch(command) {
-                case 'status':               // Send the quipu and 6sense sensor
-                    sendFunction(command + ':OK', 'generic_encoded')
+                case 'status':               // Send statuses
+                    send('status/'+simId+'/quipu', quipu.state);
+                    send('status/'+simId+'/wifi', wifi.state);
+                    send('status/'+simId+'/bluetooth', bluetooth.state);
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'reboot':               // Reboot the system
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     spawn('reboot');
                     break;
                 case 'resumerecord':         // Start recording
-                    sensor.record(MEASURE_PERIOD);
-                    sendFunction(command + ':OK', 'generic_encoded');
+                    wifi.record(MEASURE_PERIOD);
+                    bluetooth.record(MEASURE_PERIOD);
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'pauserecord':          // Pause recording
-                    sensor.pause();
-                    sendFunction(command + ':OK', 'generic_encoded');
+                    wifi.pause();
+                    bluetooth.pause();
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'closetunnel':          // Close the SSH tunnel
                     quipu.handle('closeTunnel');
-                    sendFunction(command + ':OK', 'generic_encoded');
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
             }
             break;
@@ -298,44 +327,65 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                 case 'changeperiod':
                     if (commandArgs[1].toString().match(/^\d{1,5}$/)) {
                         MEASURE_PERIOD = parseInt(commandArgs[1], 10);
-                        restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
+
+                        restart6senseIfNeeded()
+                        .then(function () {
+                            sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
+                        });
+
                     } else {
                         console.log('Period is not an integer ', commandArgs[1]);
-                        sendFunction(command + ':KO', 'generic_encoded');
+                        sendFunction(topic, JSON.stringify({command: command, result: 'KO'}));
                     }
                     break;
                 case 'changestarttime':      // Change the hour when it starts recording
                     if (commandArgs[1].match(/^\d{1,2}$/)) {
                         WAKEUP_HOUR_UTC = commandArgs[1];
-                        restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
+
+                        restart6senseIfNeeded()
+                        .then(function () {
+                            sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
+                        });
 
                         startJob.cancel();
                         startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
-                            console.log('Restarting measurments.');
-                            sensor.record(MEASURE_PERIOD);
+                            console.log('Restarting measurements.');
+
+                            wifi.record(MEASURE_PERIOD);
+                            bluetooth.record(MEASURE_PERIOD);
                         });
                     }
                     else
-                        sendFunction(command + ':KO', 'generic_encoded');
+                        sendFunction(topic, JSON.stringify({command: command, result: 'KO'}));
                     break;
                 case 'changestoptime':       // Change the hour when it stops recording
                     if (commandArgs[1].match(/^\d{1,2}$/)) {
                         SLEEP_HOUR_UTC = commandArgs[1];
-                        restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
+
+                        restart6senseIfNeeded()
+                        .then(function () {
+                            sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
+                        });
 
                         stopJob.cancel();
                         stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
-                            console.log('Pausing measurments.');
-                            sensor.pause();
+                            console.log('Pausing measurements.');
+
+                            wifi.pause();
+                            bluetooth.pause();
                         });
                     }
                     else
-                        sendFunction(command + ':KO', 'generic_encoded');
+                        sendFunction(topic, JSON.stringify({command: command, result: 'KO'}));
                     break;
                 case 'date':                 // Change the sensor's date
-                        var date = commandArgs[1].replace('t', ' ').split('.')[0];
-                        spawn('timedatectl', ['set-time', date]);
-                        restart6senseIfNeeded(command + ':' + commandArgs[1], 'generic_encoded');
+                    var date = commandArgs[1].replace('t', ' ').split('.')[0];
+                    spawn('timedatectl', ['set-time', date]);
+
+                    restart6senseIfNeeded()
+                    .then(function () {
+                        sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
+                    });
                     break;
             }
             break;
@@ -363,18 +413,24 @@ function commandHandler(commandArgs, sendFunction) { // If a status is sent, his
                         WAKEUP_HOUR_UTC = commandArgs[2];
                         startJob.cancel();
                         startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
-                            console.log('Restarting measurments.');
-                            sensor.record(MEASURE_PERIOD);
+                            console.log('Restarting measurements.');
+                            wifi.record(MEASURE_PERIOD);
+                            bluetooth.record(MEASURE_PERIOD);
                         });
 
                         SLEEP_HOUR_UTC = commandArgs[3];
                         stopJob.cancel();
                         stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
-                            console.log('Pausing measurments.');
-                            sensor.pause();
+                            console.log('Pausing measurements.');
+                            wifi.pause();
+                            bluetooth.pause();
                         });
 
-                        restart6senseIfNeeded(command + ':OK', 'generic_encoded');
+                        restart6senseIfNeeded()
+                        .then(function () {
+                            sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                        });
+
                     }
                     break;
             }
