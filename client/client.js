@@ -244,7 +244,7 @@ wifi.on('monitorError', function (error) {
 })
 
 wifi.on('processed', function(results) {
-    sixSenseCodec([results]).then(function(message){
+    sixSenseCodec(results).then(function(message){
         send('measurement/'+simId+'/wifi', message);
         measurementLogs.write(message + '\n');
     });
@@ -258,7 +258,7 @@ wifi.on('transition', function (status){
 // 6SENSE BLUETOOTH BLOCK
 
 bluetooth.on('processed', function(results) {
-    sixSenseCodec([results]).then(function(message){
+    sixSenseCodec(results).then(function(message){
         send('measurement/'+simId+'/bluetooth', message);
         measurementLogs.write(message + '\n');
     });
