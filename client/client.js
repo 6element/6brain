@@ -111,19 +111,7 @@ function mqttConnect() {
         // message is a Buffer
         console.log("data received : " + message.toString());
 
-        switch(topic) {
-
-            case 'all':
-                debug('Broadcast received :', message.toString());
-                commandHandler(message.toString(), send, 'cmdResult/'+simId) // The topic isn't definitive
-                break;
-
-            case simId:
-                commandHandler(message.toString(), send, 'cmdResult/'+simId) // The topic isn't definitive
-                break;
-
-            // TODO : Add command reception
-        }
+        commandHandler(message.toString(), send, 'cmdResult/'+simId);
     });
 
     client.on('close', function() {
