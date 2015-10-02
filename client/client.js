@@ -32,6 +32,7 @@ var simId;
 var signal = 'NODATA';
 var DEBUG = process.env.DEBUG || false;
 
+var connectTimeout;
 var reconnectAttempts = 0;
 var simIdAttempts = 0;
 
@@ -79,6 +80,11 @@ function send(topic, message) {
 
 function mqttConnect() {
 
+    if (connectTimeout) {
+        clearTimeout(connectTimeout);
+        connectTimeout = undefined;
+    }
+
     if (simId === undefined) {
 
         if (++simIdAttempts >= 10) {
@@ -123,7 +129,8 @@ function mqttConnect() {
             process.exit(1);
         }
 
-        setTimeout(mqttConnect, 10000); // Be warning : recursive
+        if (!connectTimeout)
+            connectTimeout = setTimeout(mqttConnect, 10000); // Be warning : recursive
     });
 
     client.on('error', function(err){
@@ -133,7 +140,9 @@ function mqttConnect() {
             measurementLogs.close();
             process.exit(1);
         }
-        setTimeout(mqttConnect, 10000); // Be warning : recursive
+
+        if (!connectTimeout)
+            connectTimeout = setTimeout(mqttConnect, 10000); // Be warning : recursive
     });
 }
 
@@ -244,7 +253,7 @@ wifi.on('monitorError', function (error) {
 })
 
 wifi.on('processed', function(results) {
-    sixSenseCodec(results).then(function(message){
+    sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/wifi', message);
         measurementLogs.write(message + '\n');
     });
@@ -258,7 +267,7 @@ wifi.on('transition', function (status){
 // 6SENSE BLUETOOTH BLOCK
 
 bluetooth.on('processed', function(results) {
-    sixSenseCodec(results).then(function(message){
+    sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/bluetooth', message);
         measurementLogs.write(message + '\n');
     });
