@@ -68,6 +68,10 @@ var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
 */
 
 function send(topic, message) {
+    if (!simId) {
+        debug('simId not set');
+        return false;
+    }
     if (client)
         client.publish(topic, message);
     else {
@@ -102,7 +106,7 @@ function mqttConnect() {
     if (!hasBeenConnected) {
         hasBeenConnected = true;
         client.on('connect', function(){
-            console.log('connected to the server');
+            console.log('connected to the server. ID :', simId);
             client.subscribe('all');
             client.subscribe(simId);
             send('init/' + simId, '');
@@ -150,7 +154,7 @@ quipu.on('transition', function (data) {
         send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'OK'}));
     }
 
-    send('status/'+simId+'/quipu', data.toState);
+    // send('status/'+simId+'/quipu', data.toState);
 });
 
 quipu.on('3G_error', function() {
@@ -234,7 +238,8 @@ wifi.on('processed', function(results) {
 });
 
 wifi.on('transition', function (status){
-    send('status/'+simId+'/wifi', status);
+    send('status/'+simId+'/wifi', status.toState);
+    debug('wifi status sent :', status.toState);
 });
 
 
@@ -248,7 +253,8 @@ bluetooth.on('processed', function(results) {
 });
 
 bluetooth.on('transition', function (status){
-    send('status/'+simId+'/bluetooth', status);
+    send('status/'+simId+'/bluetooth', status.toState);
+    debug('bluetooth status sent :', status.toState);
 });
 
 // COMMAND BLOCK
@@ -266,7 +272,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             // command with no parameter
             switch(command) {
                 case 'status':               // Send statuses
-                    send('status/'+simId+'/quipu', quipu.state);
+                    // send('status/'+simId+'/quipu', quipu.state);
                     send('status/'+simId+'/wifi', wifi.state);
                     send('status/'+simId+'/bluetooth', bluetooth.state);
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
