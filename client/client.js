@@ -301,7 +301,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
         case 2:
             // command with one parameters
             switch(command) {
-                case 'changeperiod':
+                case 'changeperiod':         // Change the time between two measurements
                     if (commandArgs[1].toString().match(/^\d{1,5}$/)) {
                         MEASURE_PERIOD = parseInt(commandArgs[1], 10);
 
