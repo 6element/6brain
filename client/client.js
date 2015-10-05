@@ -32,8 +32,8 @@ var simId;
 var signal = 'NODATA';
 var DEBUG = process.env.DEBUG || false;
 
-var connectTimeout;
-var reconnectAttempts = 0;
+var hasBeenConnected = false;
+
 var simIdAttempts = 0;
 
 var debug = function() {
@@ -80,11 +80,6 @@ function send(topic, message) {
 
 function mqttConnect() {
 
-    if (connectTimeout) {
-        clearTimeout(connectTimeout);
-        connectTimeout = undefined;
-    }
-
     if (simId === undefined) {
 
         if (++simIdAttempts >= 10) {
@@ -96,7 +91,6 @@ function mqttConnect() {
     }
     else
         simIdAttempts = 0;
-    var reconnectAttempts = 0;
 
     client = mqtt.connect('mqtt://' + PRIVATE.connectInfo.host + ':' + PRIVATE.connectInfo.port,
                     {
@@ -105,45 +99,22 @@ function mqttConnect() {
                         clientId: simId
                     });
 
-    client.on('connect', function(){
-        reconnectAttempts = 0;
-        console.log('connected to the server');
-        client.subscribe('all');
-        client.subscribe(simId);
-        send('init/' + simId, '');
-    });
+    if (!hasBeenConnected) {
+        hasBeenConnected = true;
+        client.on('connect', function(){
+            console.log('connected to the server');
+            client.subscribe('all');
+            client.subscribe(simId);
+            send('init/' + simId, '');
+        });
 
-    client.on('message', function(topic, message) {
-        // message is a Buffer
-        console.log("data received : " + message.toString());
+        client.on('message', function(topic, message) {
+            // message is a Buffer
+            console.log("data received : " + message.toString());
 
-        commandHandler(message.toString(), send, 'cmdResult/'+simId);
-    });
-
-    client.on('close', function() {
-        console.log('MQTT disconnection');
-
-        if (++reconnectAttempts >= 10) {
-            console.log('[ERROR] Impossible to reconnect, restarting 6brain')
-            measurementLogs.close();
-            process.exit(1);
-        }
-
-        if (!connectTimeout)
-            connectTimeout = setTimeout(mqttConnect, 10000); // Be warning : recursive
-    });
-
-    client.on('error', function(err){
-        console.log('MQTT error while connecting :', err)
-        if (++reconnectAttempts >= 10) {
-            console.log('[ERROR] Impossible to connect, restarting 6brain')
-            measurementLogs.close();
-            process.exit(1);
-        }
-
-        if (!connectTimeout)
-            connectTimeout = setTimeout(mqttConnect, 10000); // Be warning : recursive
-    });
+            commandHandler(message.toString(), send, 'cmdResult/'+simId);
+        });
+    }
 }
 
 // QUIPU BLOCK
@@ -221,10 +192,13 @@ var restart6senseIfNeeded = function(){
         setTimeout(function(){
             var date = new Date();
             var current_hour = date.getHours();
+
             if (current_hour < parseInt(SLEEP_HOUR_UTC) && current_hour >= parseInt(WAKEUP_HOUR_UTC)){
+                debug('Restarting measurements.')
                 wifi.record(MEASURE_PERIOD);
                 bluetooth.record(MEASURE_PERIOD);
             }
+
             resolve();
         }, 3000);
     });
@@ -328,7 +302,10 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         restart6senseIfNeeded()
                         .then(function () {
                             sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
-                        });
+                        })
+                        .catch(function (err) {
+                            console.log('Error in restart6senseIfNeeded :', err);
+                        })
 
                     } else {
                         console.log('Period is not an integer ', commandArgs[1]);
@@ -342,7 +319,10 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         restart6senseIfNeeded()
                         .then(function () {
                             sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
-                        });
+                        })
+                        .catch(function (err) {
+                            console.log('Error in restart6senseIfNeeded :', err);
+                        })
 
                         startJob.cancel();
                         startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
@@ -362,7 +342,10 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         restart6senseIfNeeded()
                         .then(function () {
                             sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
-                        });
+                        })
+                        .catch(function (err) {
+                            console.log('Error in restart6senseIfNeeded :', err);
+                        })
 
                         stopJob.cancel();
                         stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
@@ -382,7 +365,10 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     restart6senseIfNeeded()
                     .then(function () {
                         sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
-                    });
+                    })
+                    .catch(function (err) {
+                        console.log('Error in restart6senseIfNeeded :', err);
+                    })
                     break;
             }
             break;
@@ -401,10 +387,14 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             // command with four parameters
             switch(command) {
                 case 'init':                 // Initialize period, start and stop time
-                    debug("received init command");
-                    if (commandArgs[1].toString().match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
-                        var date = commandArgs[4].replace('t', ' ').split('.')[0];
-                        spawn('timedatectl', ['set-time', date]);
+                    if (commandArgs[1].match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
+                        var date = commandArgs[4].toUpperCase().replace('T', ' ').split('.')[0];
+
+                        spawn('timedatectl', ['set-time', date])
+                        .stderr.on('data', function(data) {
+                            console.log(data.toString());
+                        });
+
                         MEASURE_PERIOD = parseInt(commandArgs[1], 10);
 
                         WAKEUP_HOUR_UTC = commandArgs[2];
@@ -426,8 +416,16 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         restart6senseIfNeeded()
                         .then(function () {
                             sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
-                        });
+                        })
+                        .catch(function (err) {
+                            console.log('Error in restart6senseIfNeeded :', err);
+                        })
+                        debug('init done')
 
+                    }
+                    else {
+                        sendFunction(topic, JSON.stringify({command: command, result: 'Error in arguments'}));
+                        console.log('error in arguments of init')
                     }
                     break;
             }
