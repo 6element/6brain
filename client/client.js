@@ -253,7 +253,7 @@ bluetooth.on('processed', function(results) {
 });
 
 bluetooth.on('transition', function (status){
-    send('status/'+simId+'/bluetooth', status.toState);
+    send('status/'+simId+'/blue', status.toState);
     debug('bluetooth status sent :', status.toState);
 });
 
@@ -274,7 +274,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                 case 'status':               // Send statuses
                     // send('status/'+simId+'/quipu', quipu.state);
                     send('status/'+simId+'/wifi', wifi.state);
-                    send('status/'+simId+'/bluetooth', bluetooth.state);
+                    send('status/'+simId+'/blue', bluetooth.state);
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'reboot':               // Reboot the system
