@@ -153,8 +153,6 @@ quipu.on('transition', function (data) {
     if (data.fromState === '3G_connected' && data.toState === 'tunnelling') {
         send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'OK'}));
     }
-
-    // send('status/'+simId+'/quipu', data.toState);
 });
 
 quipu.on('3G_error', function() {
@@ -183,7 +181,7 @@ quipu.on('simId', function(_simId) {
 quipu.on('networkType', function(networkType) {
     if (networkType !== signal) {
         signal = networkType;
-        // TODO ? Send signal to the server
+        send('status/'+simId+'/quipu', signal);
     }
 })
 
@@ -272,7 +270,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             // command with no parameter
             switch(command) {
                 case 'status':               // Send statuses
-                    // send('status/'+simId+'/quipu', quipu.state);
+                    send('status/'+simId+'/quipu', signal);
                     send('status/'+simId+'/wifi', wifi.state);
                     send('status/'+simId+'/blue', bluetooth.state);
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
