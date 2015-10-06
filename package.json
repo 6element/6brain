@@ -15,7 +15,7 @@
     "mqtt": "^1.4.1",
     "node-schedule": "^0.2.6",
     "pheromon-codecs": "0.0.3",
-    "quipu": "0.1.9",
+    "quipu": "0.1.10",
     "request": "^2.58.0",
     "serialport": "~1.7.4"
   }
