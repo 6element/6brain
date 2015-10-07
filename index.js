@@ -11,7 +11,7 @@ var wifi = require('6sense').wifi;
 var bluetooth = require('6sense').bluetooth;
 var sixSenseCodec = require('pheromon-codecs').signalStrengths;
 
-var PRIVATE = require('../PRIVATE.json');
+var PRIVATE = require('./PRIVATE.json');
 
 
 // === to set ===
