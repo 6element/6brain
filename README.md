@@ -4,7 +4,7 @@
 [6sense](https://github.com/anthill/6sense) for data collection and
 [quipu](https://github.com/anthill/quipu) for transmission through 3G.
 
-Juste use `node client/client.js` to start everything. You should create a file called `PRIVATE.json` with this pattern:
+Juste use `node index.js` to start everything. You should create a file called `PRIVATE.json` with this pattern:
 
 ```
 {
@@ -42,10 +42,4 @@ Juste use `node client/client.js` to start everything. You should create a file 
 
 6brain not only push datas, it can respond to sms and MQTT stimuli:
 
-Here are some command examples
-
-* `status` send back a message with the current status
-
-* `changeperiod 30` change the period between two measurements to 30 seconds
-
-* `openTunnel 2222 9632 kerrigan` opens a reverse ssh tunnel toward `kerrigan` (must be set in `~/.ssh/config`) and send a message once the tunnel is up.
+[Here](https://github.com/anthill/pheromon/blob/master/api/clients/Admin/ReadMe.md) is a list of all commands supported.
