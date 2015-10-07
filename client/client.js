@@ -1,7 +1,7 @@
 "use strict";
 
 var os = require('os');
-var mqtt = require('mqtt')
+var mqtt = require('mqtt');
 var spawn = require('child_process').spawn;
 var schedule = require('node-schedule');
 var fs = require('fs');
@@ -40,8 +40,8 @@ var debug = function() {
     if (DEBUG) {
         [].unshift.call(arguments, '[DEBUG 6brain] ');
         console.log.apply(console, arguments);
-    };
-}
+    }
+};
 
 // mqtt client
 var client;
@@ -135,17 +135,12 @@ quipu.on('transition', function (data) {
         console.log('quipu initialized');
         console.log('opening 3G');
         quipu.handle('open3G', PRIVATE.connectInfo.apn);
-        quipu.askNetworkType();
-
     }
 
     if (data.toState === '3G_connected') {
         if (data.fromState === 'initialized') {
             console.log('3G initialized');
             mqttConnect();
-
-            // ask the connection type.
-            setInterval(quipu.askNetworkType, 10000);
         }
 
     }
@@ -176,6 +171,11 @@ quipu.on('smsReceived', function(sms) {
 quipu.on('simId', function(_simId) {
     simId = _simId;
     console.log('simId retrieved :', simId);
+
+    // ask the connection type.
+    quipu.askNetworkType();
+    setInterval(quipu.askNetworkType, 10000);
+
 });
 
 quipu.on('networkType', function(networkType) {
@@ -183,7 +183,7 @@ quipu.on('networkType', function(networkType) {
         signal = networkType;
         send('status/'+simId+'/quipu', signal);
     }
-})
+});
 
 // 6SENSE BLOCK
 
@@ -195,8 +195,8 @@ var restart6senseIfNeeded = function(){
             var date = new Date();
             var current_hour = date.getHours();
 
-            if (current_hour < parseInt(SLEEP_HOUR_UTC) && current_hour >= parseInt(WAKEUP_HOUR_UTC)){
-                debug('Restarting measurements.')
+            if (current_hour < parseInt(SLEEP_HOUR_UTC, 10) && current_hour >= parseInt(WAKEUP_HOUR_UTC, 10)) {
+                debug('Restarting measurements.');
                 wifi.record(MEASURE_PERIOD);
                 bluetooth.record(MEASURE_PERIOD);
             }
@@ -204,7 +204,7 @@ var restart6senseIfNeeded = function(){
             resolve();
         }, 3000);
     });
-}
+};
 
 // stop measurements at SLEEP_HOUR_UTC
 var stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
@@ -226,7 +226,7 @@ var startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function
 
 wifi.on('monitorError', function (error) {
     spawn('reboot');
-})
+});
 
 wifi.on('processed', function(results) {
     sixSenseCodec.encode(results).then(function(message){
@@ -309,7 +309,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         })
                         .catch(function (err) {
                             console.log('Error in restart6senseIfNeeded :', err);
-                        })
+                        });
 
                     } else {
                         console.log('Period is not an integer ', commandArgs[1]);
@@ -326,7 +326,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         })
                         .catch(function (err) {
                             console.log('Error in restart6senseIfNeeded :', err);
-                        })
+                        });
 
                         startJob.cancel();
                         startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
@@ -349,7 +349,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         })
                         .catch(function (err) {
                             console.log('Error in restart6senseIfNeeded :', err);
-                        })
+                        });
 
                         stopJob.cancel();
                         stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
@@ -372,7 +372,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     })
                     .catch(function (err) {
                         console.log('Error in restart6senseIfNeeded :', err);
-                    })
+                    });
                     break;
             }
             break;
@@ -382,7 +382,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             switch(command) {
                 case 'opentunnel':           // Open a reverse SSH tunnel
                     debug("sending tunnel command");
-                    quipu.handle('openTunnel', commandArgs[1], commandArgs[2], commandArgs[3])
+                    quipu.handle('openTunnel', commandArgs[1], commandArgs[2], commandArgs[3]);
                     break;
             }
             break;
@@ -392,9 +392,9 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             switch(command) {
                 case 'init':                 // Initialize period, start and stop time
                     if (commandArgs[1].match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
-                        var date = commandArgs[4].toUpperCase().replace('T', ' ').split('.')[0];
+                        var newDate = commandArgs[4].toUpperCase().replace('T', ' ').split('.')[0];
 
-                        spawn('timedatectl', ['set-time', date])
+                        spawn('timedatectl', ['set-time', newDate])
                         .stderr.on('data', function(data) {
                             console.log(data.toString());
                         });
@@ -423,20 +423,20 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         })
                         .catch(function (err) {
                             console.log('Error in restart6senseIfNeeded :', err);
-                        })
-                        debug('init done')
+                        });
+                        debug('init done');
 
                     }
                     else {
                         sendFunction(topic, JSON.stringify({command: command, result: 'Error in arguments'}));
-                        console.log('error in arguments of init')
+                        console.log('error in arguments of init');
                     }
                     break;
             }
             break;
 
         default:
-            console.log('Unrecognized command.', commandArgs)
+            console.log('Unrecognized command.', commandArgs);
             break;
     }
 }

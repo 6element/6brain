@@ -1,6 +1,8 @@
 # 6brain
 
-6brain is the core of the 6element sensors. It is responsible for data collection and transmission. It depense on [6sense](https://github.com/anthill/6sense) for data collection and [quipu](https://github.com/anthill/quipu) for transmission through 3G.
+6brain is the core of the 6element sensors. It is responsible for data collection and transmission. It dependes on 
+[6sense](https://github.com/anthill/6sense) for data collection and
+[quipu](https://github.com/anthill/quipu) for transmission through 3G.
 
 Juste use `node client/client.js` to start everything. You should create a file called `PRIVATE.json` with this pattern:
 
