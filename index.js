@@ -61,23 +61,24 @@ var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
 **  init/simId
 **  status/simId/wifi
 **  status/simId/blue
-**  status/simId/quipu
+**  status/simId/signal
+**  status/simId/client
 **  measurement/simId/wifi
 **  measurement/simId/blue
 **  cmdResult/simId
 */
 
-function send(topic, message) {
+function send(topic, message, options) {
     if (!simId) {
         debug('simId not set');
         return false;
     }
     if (client)
-        client.publish(topic, message);
+        client.publish(topic, message, options);
     else {
         debug("mqtt client not ready");
         setTimeout(function() {
-            send(topic, message);
+            send(topic, message, options);
         }, 10000);
     }
 }
@@ -101,6 +102,10 @@ function mqttConnect() {
                         username: simId,
                         password: PRIVATE.connectInfo.password,
                         clientId: simId
+                    },
+                    {
+                        keepalive: 60,
+                        clean: false
                     });
 
     if (!hasBeenConnected) {
@@ -145,12 +150,22 @@ quipu.on('transition', function (data) {
 
     }
 
-    if (data.fromState === '3G_connected' && data.toState === 'tunnelling') {
+    if (data.fromState === 'tunnelling' && data.toState === '3G_connected') {
+        send('cmdResult/'+simId, JSON.stringify({command: 'closetunnel', result: 'OK'}));
+        send('status/'+simId+'/client', 'connected');
+    }
+    else if (data.fromState === '3G_connected' && data.toState === 'tunnelling') {
         send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'OK'}));
+        send('status/'+simId+'/client', 'tunnelling');
     }
 });
 
 quipu.on('3G_error', function() {
+    console.log('exiting');
+    process.exit(-1);
+});
+
+quipu.on('hardwareError', function() {
     console.log('exiting');
     process.exit(-1);
 });
@@ -181,7 +196,7 @@ quipu.on('simId', function(_simId) {
 quipu.on('networkType', function(networkType) {
     if (networkType !== signal) {
         signal = networkType;
-        send('status/'+simId+'/quipu', signal);
+        send('status/'+simId+'/signal', signal);
     }
 });
 
@@ -230,7 +245,7 @@ wifi.on('monitorError', function (error) {
 
 wifi.on('processed', function(results) {
     sixSenseCodec.encode(results).then(function(message){
-        send('measurement/'+simId+'/wifi', message);
+        send('measurement/'+simId+'/wifi', message, {qos: 1});
         measurementLogs.write(message + '\n');
     });
 });
@@ -245,7 +260,7 @@ wifi.on('transition', function (status){
 
 bluetooth.on('processed', function(results) {
     sixSenseCodec.encode(results).then(function(message){
-        send('measurement/'+simId+'/bluetooth', message);
+        send('measurement/'+simId+'/bluetooth', message, {qos: 1});
         measurementLogs.write(message + '\n');
     });
 });
@@ -270,9 +285,10 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             // command with no parameter
             switch(command) {
                 case 'status':               // Send statuses
-                    send('status/'+simId+'/quipu', signal);
+                    send('status/'+simId+'/signal', signal);
                     send('status/'+simId+'/wifi', wifi.state);
                     send('status/'+simId+'/blue', bluetooth.state);
+                    send('status/'+simId+'/client', quipu.state === 'tunnelling' ? 'tunnelling' : 'connected');
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'reboot':               // Reboot the system
@@ -291,7 +307,6 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     break;
                 case 'closetunnel':          // Close the SSH tunnel
                     quipu.handle('closeTunnel');
-                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
             }
             break;
