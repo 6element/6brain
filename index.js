@@ -73,11 +73,11 @@ function send(topic, message, options) {
         return false;
     }
     if (client)
-        client.publish(topic, message);
+        client.publish(topic, message, options);
     else {
         debug("mqtt client not ready");
         setTimeout(function() {
-            send(topic, message);
+            send(topic, message, options);
         }, 10000);
     }
 }
