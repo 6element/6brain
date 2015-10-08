@@ -67,7 +67,7 @@ var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
 **  cmdResult/simId
 */
 
-function send(topic, message) {
+function send(topic, message, options) {
     if (!simId) {
         debug('simId not set');
         return false;
@@ -101,6 +101,10 @@ function mqttConnect() {
                         username: simId,
                         password: PRIVATE.connectInfo.password,
                         clientId: simId
+                    },
+                    {
+                        keepalive: 60,
+                        clean: false
                     });
 
     if (!hasBeenConnected) {
@@ -151,6 +155,11 @@ quipu.on('transition', function (data) {
 });
 
 quipu.on('3G_error', function() {
+    console.log('exiting');
+    process.exit(-1);
+});
+
+quipu.on('hardwareError', function() {
     console.log('exiting');
     process.exit(-1);
 });
@@ -230,7 +239,7 @@ wifi.on('monitorError', function (error) {
 
 wifi.on('processed', function(results) {
     sixSenseCodec.encode(results).then(function(message){
-        send('measurement/'+simId+'/wifi', message);
+        send('measurement/'+simId+'/wifi', message, {qos: 1});
         measurementLogs.write(message + '\n');
     });
 });
@@ -245,7 +254,7 @@ wifi.on('transition', function (status){
 
 bluetooth.on('processed', function(results) {
     sixSenseCodec.encode(results).then(function(message){
-        send('measurement/'+simId+'/bluetooth', message);
+        send('measurement/'+simId+'/bluetooth', message, {qos: 1});
         measurementLogs.write(message + '\n');
     });
 });
