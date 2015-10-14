@@ -101,10 +101,8 @@ function mqttConnect() {
                     {
                         username: simId,
                         password: PRIVATE.connectInfo.password,
-                        clientId: simId
-                    },
-                    {
-                        keepalive: 60,
+                        clientId: simId,
+                        keepalive: 0,
                         clean: false
                     });
 
