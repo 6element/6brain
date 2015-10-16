@@ -1,6 +1,8 @@
 # 6brain
 
-6brain is the core of the 6element sensors. It is responsible for data collection and transmission. It depense on [6sense](https://github.com/anthill/6sense) for data collection and [quipu](https://github.com/anthill/quipu) for transmission through sms.
+6brain is the core of the 6element sensors. It is responsible for data collection and transmission. It dependes on 
+[6sense](https://github.com/anthill/6sense) for data collection and
+[quipu](https://github.com/anthill/quipu) for transmission through 3G.
 
 Juste use `node index.js` to start everything. You should create a file called `PRIVATE.json` with this pattern:
 
@@ -10,12 +12,11 @@ Juste use `node index.js` to start everything. You should create a file called `
     {
         "host":"127.0.0.1",
         "port":1111,
-        "name":"+33600000000",
-        "smsServer":"+33611111111",
-        "authorizedNumbers":["+33611111111", "+33622222222"],
-        "smsMonitoring":false
+        "apn":"orange",
+        "password":"0xBADF00D"
     },
-    "PIN":0000
+    "authorizedNumbers":["+33611111111", "+33622222222"],
+    "PIN": "0000"
 }
 
 
@@ -26,13 +27,11 @@ Juste use `node index.js` to start everything. You should create a file called `
 
 	* port : the port of the tcp server
 
-	* name : name of the sensor (phone number in the case of 6element)
+	* apn : the apn used by the SIM card to connect to the internet
 
-	* smsServer : the phone number you want to send data to when smsMonitoring is true
+    * password : the password to connect to the MQTT network
 
-	* authorizedNumbers : phone numbers which can send command to the sensor
-
-	* smsMonitoring : true = send data by TCP + SMS, false = only TCP
+* authorizedNumbers : phone numbers which can send command to the sensor
 
 * PIN :
 
@@ -41,18 +40,6 @@ Juste use `node index.js` to start everything. You should create a file called `
 
 ## Commands
 
-6brain not only pushed the data, it can respond to sms stimuli:
+6brain not only push datas, it can respond to sms and MQTT stimuli:
 
-- `status` send back a message with the current status
-- `ip` sends back the ip
-- `openTunnel:2222:9632:kerrigan` opens a reverse ssh tunnel toward `kerrigan` (must be set in `~/.ssh/config`) and send a message once the tunnel is up.
-
-
-## Dockerizing
-
-You can run everything in a container if you like. **Careful the image is build for arm7 devices.**
-
-```
-docker build -t=ants/6brain:v1 .
-docker run -d --restart=always --privileged --net=host -v /dev:/dev ants/6brain:v1
-```
+[Here](https://github.com/anthill/pheromon/blob/master/api/clients/Admin/ReadMe.md) is a list of all commands supported.
