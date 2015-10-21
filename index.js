@@ -6,8 +6,8 @@ var schedule = require('node-schedule');
 var fs = require('fs');
 
 var quipu = require('quipu');
-var wifi = require('6sense').wifi;
-var bluetooth = require('6sense').bluetooth;
+var wifi = require('6sense').wifi();
+var bluetooth = require('6sense').bluetooth();
 var sixSenseCodec = require('pheromon-codecs').signalStrengths;
 
 var PRIVATE = require('./PRIVATE.json');
@@ -41,6 +41,7 @@ var debug = function() {
         console.log.apply(console, arguments);
     }
 };
+
 
 // mqtt client
 var client;
@@ -376,7 +377,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     break;
                 case 'date':                 // Change the sensor's date
                     var date = commandArgs[1].replace('t', ' ').split('.')[0];
-                    spawn('timedatectl', ['set-time', date]);
+                    spawn('date', ['-s', date]);
 
                     restart6senseIfNeeded()
                     .then(function () {
@@ -406,7 +407,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     if (commandArgs[1].match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
                         var newDate = commandArgs[4].toUpperCase().replace('T', ' ').split('.')[0];
 
-                        spawn('timedatectl', ['set-time', newDate])
+                        spawn('date', ['-s', newDate])
                         .stderr.on('data', function(data) {
                             console.log(data.toString());
                         });
