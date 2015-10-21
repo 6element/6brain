@@ -1,6 +1,5 @@
 "use strict";
 
-var os = require('os');
 var mqtt = require('mqtt');
 var spawn = require('child_process').spawn;
 var schedule = require('node-schedule');
@@ -61,11 +60,11 @@ var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
 ** Publish on :
 **  init/simId
 **  status/simId/wifi
-**  status/simId/blue
+**  status/simId/bluetooth
 **  status/simId/signal
 **  status/simId/client
 **  measurement/simId/wifi
-**  measurement/simId/blue
+**  measurement/simId/bluetooth
 **  cmdResult/simId
 */
 
@@ -93,7 +92,7 @@ function mqttConnect() {
             process.exit(1);
         }
         setTimeout(mqttConnect, 10000);
-        return ;
+        return;
     }
     else
         simIdAttempts = 0;
@@ -238,7 +237,7 @@ var startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function
 
 // 6SENSE WIFI BLOCK
 
-wifi.on('monitorError', function (error) {
+wifi.on('monitorError', function () {
     spawn('reboot');
 });
 
@@ -265,7 +264,7 @@ bluetooth.on('processed', function(results) {
 });
 
 bluetooth.on('transition', function (status){
-    send('status/'+simId+'/blue', status.toState);
+    send('status/'+simId+'/bluetooth', status.toState);
     debug('bluetooth status sent :', status.toState);
 });
 
@@ -286,7 +285,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                 case 'status':               // Send statuses
                     send('status/'+simId+'/signal', signal);
                     send('status/'+simId+'/wifi', wifi.state);
-                    send('status/'+simId+'/blue', bluetooth.state);
+                    send('status/'+simId+'/bluetooth', bluetooth.state);
                     send('status/'+simId+'/client', quipu.state === 'tunnelling' ? 'tunnelling' : 'connected');
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
