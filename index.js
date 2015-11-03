@@ -9,6 +9,7 @@ var quipu = require('quipu');
 var wifi = require('6sense').wifi();
 var bluetooth = require('6sense').bluetooth();
 var sixSenseCodec = require('pheromon-codecs').signalStrengths;
+var trajectoriesCodec = require('pheromon-codecs').trajectories;
 
 var PRIVATE = require('./PRIVATE.json');
 
@@ -251,6 +252,15 @@ wifi.on('processed', function(results) {
 wifi.on('transition', function (status){
     send('status/'+simId+'/wifi', status.toState);
     debug('wifi status sent :', status.toState);
+});
+
+wifi.on('trajectories', function (trajectories) {
+    console.log('trajectories received');
+    trajectoriesCodec.encode(trajectories)
+    .then(function (message) {
+        send('measurement/'+simId+'/trajectories', message, {qos: 1});
+        measurementLogs.write(message + '\n');
+    });
 });
 
 
