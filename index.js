@@ -193,7 +193,7 @@ quipu.on('simId', function(_simId) {
 });
 
 quipu.on('networkType', function(networkType) {
-    if (networkType !== signal) {
+    if (networkType !== signal && networkType !== 'H/H+') {
         signal = networkType;
         send('status/'+simId+'/signal', signal);
     }
