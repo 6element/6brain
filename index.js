@@ -417,38 +417,41 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     if (commandArgs[1].match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
                         var newDate = commandArgs[4].toUpperCase().replace('T', ' ').split('.')[0];
 
-                        spawn('date', ['-s', newDate])
-                        .stderr.on('data', function(data) {
+                        startJob.cancel();
+                        stopJob.cancel();
+
+                        MEASURE_PERIOD = parseInt(commandArgs[1], 10);
+                        WAKEUP_HOUR_UTC = commandArgs[2];
+                        SLEEP_HOUR_UTC = commandArgs[3];
+
+                        var child = spawn('date', ['-s', newDate]);
+
+                        child.stderr.on('data', function(data) {
                             console.log(data.toString());
                         });
 
-                        MEASURE_PERIOD = parseInt(commandArgs[1], 10);
+                        child.on('close', function () {
+                            startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
+                                console.log('Restarting measurements.');
+                                wifi.record(MEASURE_PERIOD);
+                                bluetooth.record(MEASURE_PERIOD);
+                            });
 
-                        WAKEUP_HOUR_UTC = commandArgs[2];
-                        startJob.cancel();
-                        startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
-                            console.log('Restarting measurements.');
-                            wifi.record(MEASURE_PERIOD);
-                            bluetooth.record(MEASURE_PERIOD);
+                            stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
+                                console.log('Pausing measurements.');
+                                wifi.pause();
+                                bluetooth.pause();
+                            });
+
+                            restart6senseIfNeeded()
+                            .then(function () {
+                                sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                            })
+                            .catch(function (err) {
+                                console.log('Error in restart6senseIfNeeded :', err);
+                            });
+                            debug('init done');
                         });
-
-                        SLEEP_HOUR_UTC = commandArgs[3];
-                        stopJob.cancel();
-                        stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
-                            console.log('Pausing measurements.');
-                            wifi.pause();
-                            bluetooth.pause();
-                        });
-
-                        restart6senseIfNeeded()
-                        .then(function () {
-                            sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
-                        })
-                        .catch(function (err) {
-                            console.log('Error in restart6senseIfNeeded :', err);
-                        });
-                        debug('init done');
-
                     }
                     else {
                         sendFunction(topic, JSON.stringify({command: command, result: 'Error in arguments'}));
