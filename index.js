@@ -16,7 +16,6 @@ var PRIVATE = require('./PRIVATE.json');
 
 // === to set ===
 // var devices = "SIM908";
-
 var devices = {
     modem: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0',
     sms: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0'
@@ -27,15 +26,19 @@ var WAKEUP_HOUR_UTC = '07';
 var SLEEP_HOUR_UTC = '16';
 // ===
 
+// Quipu infos
 var simId;
-
 var signal = 'NODATA';
-var DEBUG = process.env.DEBUG || false;
 
 var hasBeenConnected = false;
-
 var simIdAttempts = 0;
 
+// Measurement hour start/stop cronjobs
+var startJob;
+var stopJob;
+
+// Debug logger
+var DEBUG = process.env.DEBUG || false;
 var debug = function() {
     if (DEBUG) {
         [].unshift.call(arguments, '[DEBUG 6brain] ');
@@ -49,6 +52,94 @@ var client;
 
 // Open a file for measurement logs
 var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
+
+
+// UTILS BLOCK
+
+// Restart 6sense processes if the date is in the range.
+function restart6senseIfNeeded() {
+    return new Promise(function (resolve) {
+        wifi.pause();
+        bluetooth.pause();
+        setTimeout(function(){
+            var date = new Date();
+            var current_hour = date.getHours();
+
+            if (current_hour < parseInt(SLEEP_HOUR_UTC, 10) && current_hour >= parseInt(WAKEUP_HOUR_UTC, 10)) {
+                debug('Restarting measurements.');
+                wifi.record(MEASURE_PERIOD);
+                bluetooth.record(MEASURE_PERIOD);
+            }
+
+            resolve();
+        }, 3000);
+    });
+}
+
+function createStartJob() {
+    return schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
+        console.log('Restarting measurements.');
+        wifi.record(MEASURE_PERIOD);
+        bluetooth.record(MEASURE_PERIOD);
+    });
+}
+
+function createStopJob() {
+    return schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
+        console.log('Pausing measurements.');
+        wifi.pause();
+        bluetooth.pause();
+    });
+}
+
+function changeDate(newDate) {
+    return new Promise(function(resolve, reject) {
+        // Cancel every 'cronjobs' (They don't like system time changes)
+        if (startJob)
+            startJob.cancel();
+        if (stopJob)
+            stopJob.cancel();
+        if (wifi)
+            wifi.stopTrajectoriesSendJob();
+
+        // Change the date
+        var child = spawn('date', ['-s', newDate]);
+
+        child.stderr.on('data', function(data) {
+            console.log(data.toString());
+        });
+
+
+        child.on('close', function () {
+            // Restart all cronjobs
+            startJob = createStartJob();
+            stopJob = createStopJob();
+
+            if (wifi)
+                wifi.restartTrajectoriesSendJob();
+
+            restart6senseIfNeeded()
+            .then(resolve)
+            .catch(reject);
+        });
+    });
+}
+
+function send(topic, message, options) {
+    if (!simId) {
+        debug('simId not set');
+        return false;
+    }
+    if (client)
+        client.publish(topic, message, options);
+    else {
+        debug("mqtt client not ready");
+        setTimeout(function() {
+            send(topic, message, options);
+        }, 10000);
+    }
+}
+
 
 
 // MQTT BLOCK
@@ -66,23 +157,9 @@ var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
 **  status/simId/client
 **  measurement/simId/wifi
 **  measurement/simId/bluetooth
+**  measurement/simId/trajectories
 **  cmdResult/simId
 */
-
-function send(topic, message, options) {
-    if (!simId) {
-        debug('simId not set');
-        return false;
-    }
-    if (client)
-        client.publish(topic, message, options);
-    else {
-        debug("mqtt client not ready");
-        setTimeout(function() {
-            send(topic, message, options);
-        }, 10000);
-    }
-}
 
 function mqttConnect() {
 
@@ -125,10 +202,14 @@ function mqttConnect() {
     }
 }
 
+
+
 // QUIPU BLOCK
 
 spawn('killall', ["pppd"]);
+
 quipu.handle('initialize', devices, PRIVATE.PIN);
+
 
 quipu.on('transition', function (data) {
     console.log('Transitioned from ' + data.fromState + ' to ' + data.toState);
@@ -159,22 +240,22 @@ quipu.on('transition', function (data) {
     }
 });
 
-quipu.on('3G_error', function() {
+quipu.on('3G_error', function () {
     console.log('exiting');
     process.exit(-1);
 });
 
-quipu.on('hardwareError', function() {
+quipu.on('hardwareError', function () {
     console.log('exiting');
     process.exit(-1);
 });
 
-quipu.on('tunnelError', function(err) {
+quipu.on('tunnelError', function (err) {
     console.log('tunnel error');
     send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'Error : '+err}));
 });
 
-quipu.on('smsReceived', function(sms) {
+quipu.on('smsReceived', function (sms) {
     console.log('SMS received : \"' + sms.body + '\" ' + 'from \"' + sms.from + '\"');
     if (sms.body.toString().slice(0, 4) === 'cmd:' && PRIVATE.authorizedNumbers.indexOf(sms.from) > -1) {
         var cmdArgs = sms.body.toString().toLowerCase().slice(4);
@@ -182,67 +263,42 @@ quipu.on('smsReceived', function(sms) {
     }
 });
 
-quipu.on('simId', function(_simId) {
+quipu.on('simId', function (_simId) {
     simId = _simId;
     console.log('simId retrieved :', simId);
 
     // ask the connection type.
     quipu.askNetworkType();
     setInterval(quipu.askNetworkType, 10000);
-
 });
 
-quipu.on('networkType', function(networkType) {
+quipu.on('networkType', function (networkType) {
     if (networkType !== signal && networkType !== 'H/H+') {
         signal = networkType;
         send('status/'+simId+'/signal', signal);
     }
 });
 
+
+
 // 6SENSE BLOCK
 
-var restart6senseIfNeeded = function(){
-    return new Promise(function (resolve) {
-        wifi.pause();
-        bluetooth.pause();
-        setTimeout(function(){
-            var date = new Date();
-            var current_hour = date.getHours();
-
-            if (current_hour < parseInt(SLEEP_HOUR_UTC, 10) && current_hour >= parseInt(WAKEUP_HOUR_UTC, 10)) {
-                debug('Restarting measurements.');
-                wifi.record(MEASURE_PERIOD);
-                bluetooth.record(MEASURE_PERIOD);
-            }
-
-            resolve();
-        }, 3000);
-    });
-};
+// restart measurements at WAKEUP_HOUR_UTC
+startJob = createStartJob();
 
 // stop measurements at SLEEP_HOUR_UTC
-var stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
-    console.log('Pausing measurements.');
-    wifi.pause();
-    bluetooth.pause();
-});
-
-// restart measurements at WAKEUP_HOUR_UTC
-var startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
-    console.log('Restarting measurements.');
-    wifi.record(MEASURE_PERIOD);
-    bluetooth.record(MEASURE_PERIOD);
-});
+stopJob = createStopJob();
 
 
 
 // 6SENSE WIFI BLOCK
 
 wifi.on('monitorError', function () {
+
     spawn('reboot');
 });
 
-wifi.on('processed', function(results) {
+wifi.on('processed', function (results) {
     sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/wifi', message, {qos: 1});
         measurementLogs.write(message + '\n');
@@ -266,7 +322,7 @@ wifi.on('trajectories', function (trajectories) {
 
 // 6SENSE BLUETOOTH BLOCK
 
-bluetooth.on('processed', function(results) {
+bluetooth.on('processed', function (results) {
     sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/bluetooth', message, {qos: 1});
         measurementLogs.write(message + '\n');
@@ -277,6 +333,8 @@ bluetooth.on('transition', function (status){
     send('status/'+simId+'/bluetooth', status.toState);
     debug('bluetooth status sent :', status.toState);
 });
+
+
 
 // COMMAND BLOCK
 
@@ -387,9 +445,8 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     break;
                 case 'date':                 // Change the sensor's date
                     var date = commandArgs[1].replace('t', ' ').split('.')[0];
-                    spawn('date', ['-s', date]);
 
-                    restart6senseIfNeeded()
+                    changeDate()
                     .then(function () {
                         sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
                     })
@@ -424,34 +481,16 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         WAKEUP_HOUR_UTC = commandArgs[2];
                         SLEEP_HOUR_UTC = commandArgs[3];
 
-                        var child = spawn('date', ['-s', newDate]);
-
-                        child.stderr.on('data', function(data) {
-                            console.log(data.toString());
+                        changeDate(newDate)
+                        .then(function () {
+                            sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                        })
+                        .catch(function (err) {
+                            console.log('Error in changeDate:', err);
+                            sendFunction(topic, JSON.stringify({command: command, result: err}));
                         });
+                        debug('init done');
 
-                        child.on('close', function () {
-                            startJob = schedule.scheduleJob('00 ' + WAKEUP_HOUR_UTC + ' * * *', function(){
-                                console.log('Restarting measurements.');
-                                wifi.record(MEASURE_PERIOD);
-                                bluetooth.record(MEASURE_PERIOD);
-                            });
-
-                            stopJob = schedule.scheduleJob('00 '+ SLEEP_HOUR_UTC + ' * * *', function(){
-                                console.log('Pausing measurements.');
-                                wifi.pause();
-                                bluetooth.pause();
-                            });
-
-                            restart6senseIfNeeded()
-                            .then(function () {
-                                sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
-                            })
-                            .catch(function (err) {
-                                console.log('Error in restart6senseIfNeeded :', err);
-                            });
-                            debug('init done');
-                        });
                     }
                     else {
                         sendFunction(topic, JSON.stringify({command: command, result: 'Error in arguments'}));
