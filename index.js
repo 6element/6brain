@@ -462,10 +462,11 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
 
                     changeDate()
                     .then(function () {
-                        sendFunction(topic, JSON.stringify({command: command, result: commandArgs[1]}));
+                        sendFunction(topic, JSON.stringify({command: command, result: date}));
                     })
                     .catch(function (err) {
-                        console.log('Error in restart6senseIfNeeded :', err);
+                        sendFunction(topic, JSON.stringify({command: command, result: err}));
+                        console.log('Error in changeDate :', err);
                     });
                     break;
             }
@@ -487,9 +488,6 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                 case 'init':                 // Initialize period, start and stop time
                     if (commandArgs[1].match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
                         var newDate = commandArgs[4].toUpperCase().replace('T', ' ').split('.')[0];
-
-                        startJob.cancel();
-                        stopJob.cancel();
 
                         MEASURE_PERIOD = parseInt(commandArgs[1], 10);
                         WAKEUP_HOUR_UTC = commandArgs[2];
