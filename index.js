@@ -181,7 +181,8 @@ function mqttConnect() {
                         password: PRIVATE.connectInfo.password,
                         clientId: simId,
                         keepalive: 0,
-                        clean: false
+                        clean: false,
+                        reconnectPeriod: 1000 * MEASURE_PERIOD / 2
                     });
 
     if (!hasBeenConnected) {
