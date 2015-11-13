@@ -182,7 +182,8 @@ function mqttConnect() {
                         clientId: simId,
                         keepalive: 0,
                         clean: false,
-                        reconnectPeriod: 1000 * MEASURE_PERIOD / 2
+                        // Do not set to a value > 29 until this bug is fixed : https://github.com/mqttjs/MQTT.js/issues/346
+                        reconnectPeriod: 1000 * 29
                     });
 
     if (!hasBeenConnected) {
@@ -210,7 +211,6 @@ function mqttConnect() {
 spawn('killall', ["pppd"]);
 
 quipu.handle('initialize', devices, PRIVATE.PIN);
-
 
 quipu.on('transition', function (data) {
     console.log('Transitioned from ' + data.fromState + ' to ' + data.toState);
@@ -300,6 +300,12 @@ wifi.on('monitorError', function () {
 });
 
 wifi.on('processed', function (results) {
+    console.log('wifi measurements received');
+    debug({
+        date: results.date,
+        signals: results.devices.length
+    });
+
     sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/wifi', message, {qos: 1});
         measurementLogs.write(message + '\n');
@@ -313,6 +319,7 @@ wifi.on('transition', function (status){
 
 wifi.on('trajectories', function (trajectories) {
     console.log('trajectories received');
+
     trajectoriesCodec.encode(trajectories)
     .then(function (message) {
         send('measurement/'+simId+'/trajectories', message, {qos: 1});
@@ -324,6 +331,12 @@ wifi.on('trajectories', function (trajectories) {
 // 6SENSE BLUETOOTH BLOCK
 
 bluetooth.on('processed', function (results) {
+    console.log('bluetooth measurements received');
+    debug({
+        date: results.date,
+        signals: results.devices.length
+    });
+
     sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/bluetooth', message, {qos: 1});
         measurementLogs.write(message + '\n');
