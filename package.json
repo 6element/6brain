@@ -1,6 +1,6 @@
 {
   "name": "6brain",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -14,9 +14,6 @@
     "machina": "~1.1.2",
     "mqtt": "^1.4.1",
     "node-schedule": "^0.2.6",
-    "pheromon-codecs": "0.0.4",
-    "quipu": "0.1.11",
-    "request": "^2.58.0",
-    "serialport": "~1.7.4"
+    "pheromon-codecs": "0.0.4"
   }
 }
