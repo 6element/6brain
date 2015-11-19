@@ -296,7 +296,11 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'closetunnel':          // Close the SSH tunnel
-                    sshProcess.kill();
+                    sshProcess.kill('SIGINT');
+                    setTimeout(function () {
+                        if (sshProcess)
+                            sshProcess.kill();
+                    }, 2000);
                     send('cmdResult/'+simId, JSON.stringify({command: 'closetunnel', result: 'OK'}));
                     send('status/'+simId+'/client', 'connected');
                     break;
