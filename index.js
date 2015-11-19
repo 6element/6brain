@@ -5,7 +5,6 @@ var spawn = require('child_process').spawn;
 var schedule = require('node-schedule');
 var fs = require('fs');
 
-var quipu = require('quipu');
 var wifi = require('6sense').wifi();
 var bluetooth = require('6sense').bluetooth();
 var sixSenseCodec = require('pheromon-codecs').signalStrengths;
@@ -15,23 +14,14 @@ var PRIVATE = require('./PRIVATE.json');
 
 
 // === to set ===
-// var devices = "SIM908";
-var devices = {
-    modem: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if00-port0',
-    sms: '/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0'
-};
-
 var MEASURE_PERIOD = 300; // in seconds
 var WAKEUP_HOUR_UTC = '07';
 var SLEEP_HOUR_UTC = '16';
+var SSH_TIMEOUT = 20 * 1000;
 // ===
 
-// Quipu infos
-var simId;
-var signal = 'NODATA';
-
-var hasBeenConnected = false;
-var simIdAttempts = 0;
+var simId = PRIVATE.sim;
+var sshProcess;
 
 // Measurement hour start/stop cronjobs
 var startJob;
@@ -125,23 +115,6 @@ function changeDate(newDate) {
     });
 }
 
-function send(topic, message, options) {
-    if (!simId) {
-        debug('simId not set');
-        return false;
-    }
-    if (client)
-        client.publish(topic, message, options);
-    else {
-        debug("mqtt client not ready");
-        setTimeout(function() {
-            send(topic, message, options);
-        }, 10000);
-    }
-}
-
-
-
 // MQTT BLOCK
 
 /*
@@ -153,7 +126,6 @@ function send(topic, message, options) {
 **  init/simId
 **  status/simId/wifi
 **  status/simId/bluetooth
-**  status/simId/signal
 **  status/simId/client
 **  measurement/simId/wifi
 **  measurement/simId/bluetooth
@@ -163,123 +135,64 @@ function send(topic, message, options) {
 
 function mqttConnect() {
 
-    if (simId === undefined) {
-
-        if (++simIdAttempts >= 10) {
-            console.log('[ERROR] Cannot retrieve simId, restarting 6brain.');
-            process.exit(1);
+    client = mqtt.connect('mqtt://' + PRIVATE.host + ':' + PRIVATE.port,
+        {
+            username: simId,
+            password: PRIVATE.mqttToken,
+            clientId: simId,
+            keepalive: 60*10,
+            clean: false,
+            // Do not set to a value > 29 until this bug is fixed : https://github.com/mqttjs/MQTT.js/issues/346
+            reconnectPeriod: 1000 * 29
         }
-        setTimeout(mqttConnect, 10000);
-        return;
-    }
-    else
-        simIdAttempts = 0;
+    );
 
-    client = mqtt.connect('mqtt://' + PRIVATE.connectInfo.host + ':' + PRIVATE.connectInfo.port,
-                    {
-                        username: simId,
-                        password: PRIVATE.connectInfo.password,
-                        clientId: simId,
-                        keepalive: 0,
-                        clean: false,
-                        // Do not set to a value > 29 until this bug is fixed : https://github.com/mqttjs/MQTT.js/issues/346
-                        reconnectPeriod: 1000 * 29
-                    });
 
-    if (!hasBeenConnected) {
-        hasBeenConnected = true;
-        client.on('connect', function(){
-            console.log('connected to the server. ID :', simId);
-            client.subscribe('all');
-            client.subscribe(simId);
-            send('init/' + simId, '');
-        });
+    client.on('connect', function(){
+        console.log('connected to the server. ID :', simId);
+        client.subscribe('all');
+        client.subscribe(simId);
+        send('init/' + simId, '');
+    });
 
-        client.on('message', function(topic, message) {
-            // message is a Buffer
-            console.log("data received : " + message.toString());
+    client.on('message', function(topic, message) {
+        // message is a Buffer
+        console.log("data received : " + message.toString());
 
-            commandHandler(message.toString(), send, 'cmdResult/'+simId);
-        });
+        commandHandler(message.toString(), send, 'cmdResult/'+simId);
+    });
+}
+
+function send(topic, message, options) {
+    if (client)
+        client.publish(topic, message, options);
+    else {
+        debug("mqtt client not ready");
+        setTimeout(function() {
+            send(topic, message, options);
+        }, 10000);
     }
 }
 
+function openTunnel(queenPort, antPort, target) {
+            
+    return new Promise(function(resolve, reject){
+        var myProcess = spawn("ssh", ["-v", "-N", "-R", queenPort + ":localhost:" + antPort, target]);
+        debug("nodeprocess :", myProcess.pid, "myProcess: ", process.pid);
+        myProcess.stderr.on("data", function(chunkBuffer){
+            var message = chunkBuffer.toString();
+            debug("ssh stderr => " + message);
+            if (message.indexOf("remote forward success") !== -1){
+                resolve(myProcess);
+            } else if (message.indexOf("Warning: remote port forwarding failed for listen port") !== -1){
+                reject({process: myProcess, msg:"Port already in use."});
+            }
+        });
+        // if no error after SSH_TIMEOUT 
+        setTimeout(function(){reject({process: myProcess, msg:"SSH timeout"}); }, SSH_TIMEOUT);
+    })
 
-
-// QUIPU BLOCK
-
-spawn('killall', ["pppd"]);
-
-quipu.handle('initialize', devices, PRIVATE.PIN);
-
-quipu.on('transition', function (data) {
-    console.log('Transitioned from ' + data.fromState + ' to ' + data.toState);
-
-
-    if (data.fromState === 'uninitialized' && data.toState === 'initialized') {
-
-        console.log('quipu initialized');
-        console.log('opening 3G');
-        quipu.handle('open3G', PRIVATE.connectInfo.apn);
-    }
-
-    if (data.toState === '3G_connected') {
-        if (data.fromState === 'initialized') {
-            console.log('3G initialized');
-            mqttConnect();
-        }
-
-    }
-
-    if (data.fromState === 'tunnelling' && data.toState === '3G_connected') {
-        send('cmdResult/'+simId, JSON.stringify({command: 'closetunnel', result: 'OK'}));
-        send('status/'+simId+'/client', 'connected');
-    }
-    else if (data.fromState === '3G_connected' && data.toState === 'tunnelling') {
-        send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'OK'}));
-        send('status/'+simId+'/client', 'tunnelling');
-    }
-});
-
-quipu.on('3G_error', function () {
-    console.log('exiting');
-    process.exit(-1);
-});
-
-quipu.on('hardwareError', function () {
-    console.log('exiting');
-    process.exit(-1);
-});
-
-quipu.on('tunnelError', function (err) {
-    console.log('tunnel error');
-    send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'Error : '+err}));
-});
-
-quipu.on('smsReceived', function (sms) {
-    console.log('SMS received : \"' + sms.body + '\" ' + 'from \"' + sms.from + '\"');
-    if (sms.body.toString().slice(0, 4) === 'cmd:' && PRIVATE.authorizedNumbers.indexOf(sms.from) > -1) {
-        var cmdArgs = sms.body.toString().toLowerCase().slice(4);
-        commandHandler(cmdArgs, send, 'cmdResult/'+simId);
-    }
-});
-
-quipu.on('simId', function (_simId) {
-    simId = _simId;
-    console.log('simId retrieved :', simId);
-
-    // ask the connection type.
-    quipu.askNetworkType();
-    setInterval(quipu.askNetworkType, 10000);
-});
-
-quipu.on('networkType', function (networkType) {
-    if (networkType !== signal && networkType !== 'H/H+') {
-        signal = networkType;
-        send('status/'+simId+'/signal', signal);
-    }
-});
-
+}
 
 
 // 6SENSE BLOCK
@@ -295,8 +208,7 @@ stopJob = createStopJob();
 // 6SENSE WIFI BLOCK
 
 wifi.on('monitorError', function () {
-
-    spawn('reboot');
+    console.log("ERROR on wifi detection");
 });
 
 wifi.on('processed', function (results) {
@@ -365,10 +277,8 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             // command with no parameter
             switch(command) {
                 case 'status':               // Send statuses
-                    send('status/'+simId+'/signal', signal);
                     send('status/'+simId+'/wifi', wifi.state);
                     send('status/'+simId+'/bluetooth', bluetooth.state);
-                    send('status/'+simId+'/client', quipu.state === 'tunnelling' ? 'tunnelling' : 'connected');
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'reboot':               // Reboot the system
@@ -386,7 +296,9 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'closetunnel':          // Close the SSH tunnel
-                    quipu.handle('closeTunnel');
+                    sshProcess.kill();
+                    send('cmdResult/'+simId, JSON.stringify({command: 'closetunnel', result: 'OK'}));
+                    send('status/'+simId+'/client', 'connected');
                     break;
             }
             break;
@@ -476,8 +388,17 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             // command with three parameters
             switch(command) {
                 case 'opentunnel':           // Open a reverse SSH tunnel
-                    debug("sending tunnel command");
-                    quipu.handle('openTunnel', commandArgs[1], commandArgs[2], commandArgs[3]);
+                    openTunnel(commandArgs[1], commandArgs[2], commandArgs[3])
+                    .then(function(process){
+                        sshProcess = process;
+                        send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'OK'}));
+                        send('status/'+simId+'/client', 'tunnelling');
+                    })
+                    .catch(function(err){
+                        console.log(err.msg);
+                        console.log("Could not make the tunnel. Cleanning...");
+                        send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'Error : '+err.msg}));
+                    });
                     break;
             }
             break;
@@ -517,3 +438,5 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             break;
     }
 }
+
+mqttConnect();
