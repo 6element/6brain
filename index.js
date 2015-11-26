@@ -10,6 +10,8 @@ var bluetooth = require('6sense').bluetooth();
 var sixSenseCodec = require('pheromon-codecs').signalStrengths;
 var trajectoriesCodec = require('pheromon-codecs').trajectories;
 
+var BinServer = require('6bin').BinServer;
+
 var PRIVATE = require('./PRIVATE.json');
 
 
@@ -195,7 +197,6 @@ function openTunnel(queenPort, antPort, target) {
 
 }
 
-
 // 6SENSE BLOCK
 
 // restart measurements at WAKEUP_HOUR_UTC
@@ -261,6 +262,23 @@ bluetooth.on('transition', function (status){
     debug('bluetooth status sent :', status.toState);
 });
 
+
+// 6BIN BLOCK
+
+var server = new BinServer();
+
+server.start(3000);
+
+server.on('msg', function(msg){
+    var self = this;
+
+    console.log('msg received', msg);
+    setTimeout(function(){
+        console.log('emitting');
+        self.emit('response', msg);
+    }, 1000);
+
+});
 
 
 // COMMAND BLOCK

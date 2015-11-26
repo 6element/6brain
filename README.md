@@ -1,7 +1,8 @@
 # 6brain
 
 6brain is the core of the 6element sensors. It is responsible for data collection and transmission. It dependes on 
-[6sense](https://github.com/anthill/6sense) for data collection.
+[6sense](https://github.com/anthill/6sense) for affluence data collection.
+[6bin](https://github.com/anthill/6bin) for user interface 
 
 Juste use `node index.js` to start everything. You should create a file called `PRIVATE.json` with this pattern:
 
