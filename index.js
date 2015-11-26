@@ -157,11 +157,6 @@ function mqttConnect() {
         send('init/' + simId, '');
     });
 
-    client.on('reconnect', function() {
-        console.log("reconnect");
-        client.subscribe('all');
-        client.subscribe(simId);
-    });
 
     client.on('message', function(topic, message) {
         // message is a Buffer
