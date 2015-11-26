@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "postinstall": "if [ -d .git ]; then cp ./git-hooks/pre-commit ./.git/hooks/pre-commit; chmod a+x ./.git/hooks/pre-commit; fi",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "ants <contact@ants.builders> (http://ants.builders)",
