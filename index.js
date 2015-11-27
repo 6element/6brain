@@ -22,6 +22,7 @@ var SSH_TIMEOUT = 20 * 1000;
 
 var simId = PRIVATE.sim;
 var sshProcess;
+var inited = false;
 
 // Measurement hour start/stop cronjobs
 var startJob;
@@ -150,9 +151,12 @@ function mqttConnect() {
 
     client.on('connect', function(){
         console.log('connected to the server. ID :', simId);
-        client.subscribe('all');
-        client.subscribe(simId);
-        send('init/' + simId, '');
+        client.subscribe('all', {qos: 1});
+        client.subscribe(simId, {qos: 1});
+        if (!inited) {
+            send('init/' + simId, '');
+            inited = true;
+        }
     });
 
 
