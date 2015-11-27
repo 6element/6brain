@@ -12,7 +12,7 @@
     "6sense": "1.0.4",
     "es6-promise": "~2.3.0",
     "machina": "~1.1.2",
-    "mqtt": "^1.4.1",
+    "mqtt": "git://github.com/4rzael/MQTT.js.git",
     "node-schedule": "^0.2.6",
     "pheromon-codecs": "0.0.5"
   }

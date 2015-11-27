@@ -144,7 +144,7 @@ function mqttConnect() {
             keepalive: 60*10,
             clean: false,
             // Do not set to a value > 29 until this bug is fixed : https://github.com/mqttjs/MQTT.js/issues/346
-            reconnectPeriod: 1000 * 29
+            reconnectPeriod: 1000 * 10
         }
     );
 
