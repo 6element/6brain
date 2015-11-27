@@ -25,6 +25,7 @@ var SSH_TIMEOUT = 20 * 1000;
 
 var simId = PRIVATE.sim;
 var sshProcess;
+var inited = false;
 
 // Measurement hour start/stop cronjobs
 var startJob;
@@ -143,21 +144,27 @@ function mqttConnect() {
             username: simId,
             password: PRIVATE.mqttToken,
             clientId: simId,
-            keepalive: 60*10,
+            keepalive: 60*60,
             clean: false,
             // Do not set to a value > 29 until this bug is fixed : https://github.com/mqttjs/MQTT.js/issues/346
-            reconnectPeriod: 1000 * 29
+            reconnectPeriod: 1000 * 10
         }
     );
 
 
     client.on('connect', function(){
         console.log('connected to the server. ID :', simId);
-        client.subscribe('all');
-        client.subscribe(simId);
-        send('init/' + simId, '');
+        client.subscribe('all', {qos: 1});
+        client.subscribe(simId, {qos: 1});
+        if (!inited) {
+            send('init/' + simId, '');
+            inited = true;
+        }
     });
 
+    client.on('offline', function(topic, message) {
+        console.log("offline")
+    })
 
     client.on('message', function(topic, buffer) {
         var destination = topic.split('/')[1]; // subtopics[0] is simId or all => irrelevant
