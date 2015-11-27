@@ -141,7 +141,7 @@ function mqttConnect() {
             username: simId,
             password: PRIVATE.mqttToken,
             clientId: simId,
-            keepalive: 60*10,
+            keepalive: 60*60,
             clean: false,
             // Do not set to a value > 29 until this bug is fixed : https://github.com/mqttjs/MQTT.js/issues/346
             reconnectPeriod: 1000 * 10
