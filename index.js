@@ -37,15 +37,8 @@ var debug = function() {
     }
 };
 
-
 // mqtt client
 var client;
-
-// Open a file for measurement logs
-var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
-
-
-// UTILS BLOCK
 
 // Restart 6sense processes if the date is in the range.
 function restart6senseIfNeeded() {
@@ -228,7 +221,6 @@ wifi.on('processed', function (results) {
 
     sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/wifi', message, {qos: 1});
-        measurementLogs.write(message + '\n');
     });
 });
 
@@ -243,7 +235,6 @@ wifi.on('trajectories', function (trajectories) {
     trajectoriesCodec.encode(trajectories)
     .then(function (message) {
         send('measurement/'+simId+'/trajectories', message, {qos: 1});
-        measurementLogs.write(message + '\n');
     });
 });
 
@@ -259,7 +250,6 @@ bluetooth.on('processed', function (results) {
 
     sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/bluetooth', message, {qos: 1});
-        measurementLogs.write(message + '\n');
     });
 });
 
