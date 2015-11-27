@@ -288,6 +288,7 @@ binServer.on('measurementRequest', function(request){
             date:
             value: [{}]
             (index:) -> reference to the 6bin local pending promise
+            (origin:) -> so that pheromon knows it needs to send back smg
         }
     */
 
@@ -303,7 +304,8 @@ binServer.on('binRequest', function(request){
     /*
         bins request: {
             bins: [BinData],
-            index: number -> reference to the 6bin local pending promise
+            (index:) -> reference to the 6bin local pending promise
+            (origin:) -> so that pheromon knows it needs to send back smg
         }
     */
 
@@ -314,7 +316,7 @@ binServer.on('binRequest', function(request){
         url: url,
         method: 'POST', // because this query will modify bins on 6element DB
         data: request.bins,
-        origin: '6bin',
+        origin: request.origin,
         index: request.index
     };
 
