@@ -11,6 +11,7 @@ var sixSenseCodec = require('pheromon-codecs').signalStrengths;
 var trajectoriesCodec = require('pheromon-codecs').trajectories;
 
 var BinServer = require('6bin').BinServer;
+var binServer = new BinServer();
 
 var PRIVATE = require('./PRIVATE.json');
 
@@ -165,11 +166,17 @@ function mqttConnect() {
         console.log("offline")
     })
 
-    client.on('message', function(topic, message) {
-        // message is a Buffer
-        console.log("data received : " + message.toString());
+    client.on('message', function(topic, buffer) {
+        var destination = topic.split('/')[1]; // subtopics[0] is simId or all => irrelevant
 
-        commandHandler(message.toString(), send, 'cmdResult/'+simId);
+        var message = buffer.toString();
+        console.log("data received :", message, 'destination', destination);
+
+        if (destination === '6bin') {
+            binServer.emit('data', JSON.parse(message));
+        }
+        else
+            commandHandler(message, send, 'cmdResult/'+simId);
     });
 }
 
@@ -272,19 +279,46 @@ bluetooth.on('transition', function (status){
 
 // 6BIN BLOCK
 
-var server = new BinServer();
+binServer.start(3000);
 
-server.start(3000);
+// These are what 6brain receives from 6bin server
+binServer.on('measurementRequest', function(request){
+    /* 
+        measurement request: {
+            date:
+            value: [{}]
+            (index:) -> reference to the 6bin local pending promise
+        }
+    */
 
-server.on('msg', function(msg){
     var self = this;
+    debug('msg received from 6bin client', request);
 
-    console.log('msg received', msg);
-    setTimeout(function(){
-        console.log('emitting');
-        self.emit('response', msg);
-    }, 1000);
+    send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
+});
 
+var url = 'myURL';
+
+binServer.on('binRequest', function(request){
+    /*
+        bins request: {
+            bins: [BinData],
+            index: number -> reference to the 6bin local pending promise
+        }
+    */
+
+    var self = this;
+    debug('msg received from 6bin client', request);
+
+    var message = {
+        url: url,
+        method: 'POST', // because this query will modify bins on 6element DB
+        data: request.bins,
+        origin: '6bin',
+        index: request.index
+    };
+
+    send('url/' + simId, JSON.stringify(message), {qos: 1});
 });
 
 
