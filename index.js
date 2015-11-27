@@ -159,6 +159,9 @@ function mqttConnect() {
         }
     });
 
+    client.on('offline', function(topic, message) {
+        console.log("offline")
+    })
 
     client.on('message', function(topic, message) {
         // message is a Buffer
