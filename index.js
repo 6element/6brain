@@ -287,7 +287,7 @@ binServer.on('measurementRequest', function(request){
     var self = this;
     debug('msg received from 6bin client', request);
 
-    send('measurement/' + simId + '/bin', request, {qos: 1});
+    send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
 });
 
 var url = 'myURL';
@@ -305,13 +305,13 @@ binServer.on('binRequest', function(request){
 
     var message = {
         url: url,
-        method: 'POST',
+        method: 'POST', // because this query will modify bins on 6element DB
         data: request.bins,
         origin: '6bin',
         index: request.index
     };
 
-    send('url/' + simId, message, {qos: 1});
+    send('url/' + simId, JSON.stringify(message), {qos: 1});
 });
 
 
