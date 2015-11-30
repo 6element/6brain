@@ -86,8 +86,6 @@ function changeDate(newDate) {
             startJob.cancel();
         if (stopJob)
             stopJob.cancel();
-        if (wifi)
-            wifi.stopTrajectoriesSendJob();
 
         // Change the date
         var child = spawn('date', ['-s', newDate]);
@@ -101,9 +99,6 @@ function changeDate(newDate) {
             // Restart all cronjobs
             startJob = createStartJob();
             stopJob = createStopJob();
-
-            if (wifi)
-                wifi.restartTrajectoriesSendJob();
 
             restart6senseIfNeeded()
             .then(resolve)
@@ -237,15 +232,6 @@ wifi.on('transition', function (status){
     debug('wifi status sent :', status.toState);
 });
 
-wifi.on('trajectories', function (trajectories) {
-    console.log('trajectories received');
-
-    trajectoriesCodec.encode(trajectories)
-    .then(function (message) {
-        send('measurement/'+simId+'/trajectories', message, {qos: 1});
-    });
-});
-
 
 // 6SENSE BLUETOOTH BLOCK
 
@@ -355,6 +341,13 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     }, 2000);
                     send('cmdResult/'+simId, JSON.stringify({command: 'closetunnel', result: 'OK'}));
                     send('status/'+simId+'/client', 'connected');
+                    break;
+                case 'gettrajectories':
+                    var trajectories = wifi.getTrajectories();
+                    trajectoriesCodec.encode(trajectories)
+                    .then(function (message) {
+                        send('measurement/'+simId+'/trajectories', message, {qos: 1});
+                    });
                     break;
             }
             break;
