@@ -10,6 +10,9 @@ var bluetooth = require('6sense').bluetooth();
 var sixSenseCodec = require('pheromon-codecs').signalStrengths;
 var trajectoriesCodec = require('pheromon-codecs').trajectories;
 
+var BinServer = require('6bin').BinServer;
+var binServer = new BinServer();
+
 var PRIVATE = require('./PRIVATE.json');
 
 
@@ -156,11 +159,17 @@ function mqttConnect() {
         console.log("offline")
     })
 
-    client.on('message', function(topic, message) {
-        // message is a Buffer
-        console.log("data received : " + message.toString());
+    client.on('message', function(topic, buffer) {
+        var destination = topic.split('/')[1]; // subtopics[0] is simId or all => irrelevant
 
-        commandHandler(message.toString(), send, 'cmdResult/'+simId);
+        var message = buffer.toString();
+        console.log("data received :", message, 'destination', destination);
+
+        if (destination === '6bin') {
+            binServer.emit('data', JSON.parse(message));
+        }
+        else
+            commandHandler(message, send, 'cmdResult/'+simId);
     });
 }
 
@@ -194,7 +203,6 @@ function openTunnel(queenPort, antPort, target) {
     })
 
 }
-
 
 // 6SENSE BLOCK
 
@@ -258,6 +266,52 @@ bluetooth.on('transition', function (status){
     debug('bluetooth status sent :', status.toState);
 });
 
+
+// 6BIN BLOCK
+
+binServer.start(3000);
+
+// These are what 6brain receives from 6bin server
+binServer.on('measurementRequest', function(request){
+    /* 
+        measurement request: {
+            date:
+            value: [{}]
+            (index:) -> reference to the 6bin local pending promise
+            (origin:) -> so that pheromon knows it needs to send back smg
+        }
+    */
+
+    var self = this;
+    debug('msg received from 6bin client', request);
+
+    send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
+});
+
+var url = 'myURL';
+
+binServer.on('binRequest', function(request){
+    /*
+        bins request: {
+            bins: [BinData],
+            (index:) -> reference to the 6bin local pending promise
+            (origin:) -> so that pheromon knows it needs to send back smg
+        }
+    */
+
+    var self = this;
+    debug('msg received from 6bin client', request);
+
+    var message = {
+        url: url,
+        method: 'POST', // because this query will modify bins on 6element DB
+        data: request.bins,
+        origin: request.origin,
+        index: request.index
+    };
+
+    send('url/' + simId, JSON.stringify(message), {qos: 1});
+});
 
 
 // COMMAND BLOCK
