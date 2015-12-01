@@ -430,6 +430,26 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         console.log('Error in changeDate :', err);
                     });
                     break;
+                case 'resumerecord':
+                    var mtype = commandArgs[1];
+                    if (mtype === "wifi")
+                        wifi.record(MEASURE_PERIOD);
+                    if (mtype === "bluetooth")
+                        bluetooth.record(MEASURE_PERIOD);
+                    if (mtype === "trajectories")
+                        wifi.startRecordingTrajectories();
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                    break;
+                case 'pauserecord':
+                    var mtype = commandArgs[1];
+                    if (mtype === "wifi")
+                        wifi.pause();
+                    if (mtype === "bluetooth")
+                        bluetooth.pause();
+                    if (mtype === "trajectories")
+                        wifi.stopRecordingTrajectories();
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                    break;
             }
             break;
 
