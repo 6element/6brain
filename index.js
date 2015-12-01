@@ -474,28 +474,15 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'Error : '+err.msg}));
                     });
                     break;
-            }
-            break;
 
-        case 5:
-            // command with four parameters
-            switch(command) {
                 case 'init':                 // Initialize period, start and stop time
                     if (commandArgs[1].match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
-                        var newDate = commandArgs[4].toUpperCase().replace('T', ' ').split('.')[0];
 
                         MEASURE_PERIOD = parseInt(commandArgs[1], 10);
                         WAKEUP_HOUR_UTC = commandArgs[2];
                         SLEEP_HOUR_UTC = commandArgs[3];
 
-                        changeDate(newDate)
-                        .then(function () {
-                            sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
-                        })
-                        .catch(function (err) {
-                            console.log('Error in changeDate:', err);
-                            sendFunction(topic, JSON.stringify({command: command, result: err}));
-                        });
+                        sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                         debug('init done');
 
                     }
