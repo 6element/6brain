@@ -35,6 +35,7 @@ var inited = false;
 // Measurement hour start/stop cronjobs
 var startJob;
 var stopJob;
+var trajJob;
 
 // Debug logger
 var DEBUG = process.env.DEBUG || false;
@@ -84,6 +85,17 @@ function createStopJob() {
     });
 }
 
+function createTrajectoryJob() {
+    return schedule.scheduleJob('00 00 * * *', function(){
+        console.log('Sending trajectories');
+        var trajectories = wifi.getTrajectories();
+        trajectoriesCodec.encode(trajectories, trajectoriesCodecOptions)
+        .then(function (message) {
+            send('measurement/'+simId+'/trajectories', message, {qos: 1});
+        });
+    });
+}
+
 function changeDate(newDate) {
     return new Promise(function(resolve, reject) {
         // Cancel every 'cronjobs' (They don't like system time changes)
@@ -91,6 +103,8 @@ function changeDate(newDate) {
             startJob.cancel();
         if (stopJob)
             stopJob.cancel();
+        if (trajJob)
+            trajJob.cancel();
 
         // Change the date
         var child = spawn('date', ['-s', newDate]);
@@ -104,6 +118,8 @@ function changeDate(newDate) {
             // Restart all cronjobs
             startJob = createStartJob();
             stopJob = createStopJob();
+            if (wifi.recordTrajectories)
+                trajJob = createTrajectoryJob();
 
             restart6senseIfNeeded()
             .then(resolve)
@@ -211,6 +227,9 @@ startJob = createStartJob();
 
 // stop measurements at SLEEP_HOUR_UTC
 stopJob = createStopJob();
+
+// send trajectories at midnight
+trajJob = createTrajectoryJob();
 
 
 
