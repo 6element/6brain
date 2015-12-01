@@ -10,13 +10,13 @@
   "author": "ants <contact@ants.builders> (http://ants.builders)",
   "license": "MIT",
   "dependencies": {
-    "6bin": "^1.0.5",
-    "6sense": "1.0.4",
+    "6bin": "1.1.0",
+    "6sense": "1.1.1",
     "es6-promise": "~2.3.0",
     "machina": "~1.1.2",
-    "mqtt": "git://github.com/4rzael/MQTT.js.git",
+    "mqtt": "1.6.0",
     "node-schedule": "^0.2.6",
-    "pheromon-codecs": "0.0.5"
+    "pheromon-codecs": "0.0.6"
   },
   "devDependencies": {
     "eslint": "^1.10.1"

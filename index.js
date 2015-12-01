@@ -10,6 +10,11 @@ var bluetooth = require('6sense').bluetooth();
 var sixSenseCodec = require('pheromon-codecs').signalStrengths;
 var trajectoriesCodec = require('pheromon-codecs').trajectories;
 
+var trajectoriesCodecOptions = {
+    precisionSignalStrength: 1,
+    precisionDate: 30
+}
+
 var BinServer = require('6bin').BinServer;
 var binServer = new BinServer();
 
@@ -30,6 +35,7 @@ var inited = false;
 // Measurement hour start/stop cronjobs
 var startJob;
 var stopJob;
+var trajJob;
 
 // Debug logger
 var DEBUG = process.env.DEBUG || false;
@@ -40,15 +46,8 @@ var debug = function() {
     }
 };
 
-
 // mqtt client
 var client;
-
-// Open a file for measurement logs
-var measurementLogs = fs.createWriteStream('measurements.log', {flags: 'a'});
-
-
-// UTILS BLOCK
 
 // Restart 6sense processes if the date is in the range.
 function restart6senseIfNeeded() {
@@ -86,6 +85,17 @@ function createStopJob() {
     });
 }
 
+function createTrajectoryJob() {
+    return schedule.scheduleJob('00 00 * * *', function(){
+        console.log('Sending trajectories');
+        var trajectories = wifi.getTrajectories();
+        trajectoriesCodec.encode(trajectories, trajectoriesCodecOptions)
+        .then(function (message) {
+            send('measurement/'+simId+'/trajectories', message, {qos: 1});
+        });
+    });
+}
+
 function changeDate(newDate) {
     return new Promise(function(resolve, reject) {
         // Cancel every 'cronjobs' (They don't like system time changes)
@@ -93,8 +103,8 @@ function changeDate(newDate) {
             startJob.cancel();
         if (stopJob)
             stopJob.cancel();
-        if (wifi)
-            wifi.stopTrajectoriesSendJob();
+        if (trajJob)
+            trajJob.cancel();
 
         // Change the date
         var child = spawn('date', ['-s', newDate]);
@@ -108,9 +118,8 @@ function changeDate(newDate) {
             // Restart all cronjobs
             startJob = createStartJob();
             stopJob = createStopJob();
-
-            if (wifi)
-                wifi.restartTrajectoriesSendJob();
+            if (wifi.recordTrajectories)
+                trajJob = createTrajectoryJob();
 
             restart6senseIfNeeded()
             .then(resolve)
@@ -219,6 +228,9 @@ startJob = createStartJob();
 // stop measurements at SLEEP_HOUR_UTC
 stopJob = createStopJob();
 
+// send trajectories at midnight
+trajJob = createTrajectoryJob();
+
 
 
 // 6SENSE WIFI BLOCK
@@ -236,23 +248,12 @@ wifi.on('processed', function (results) {
 
     sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/wifi', message, {qos: 1});
-        measurementLogs.write(message + '\n');
     });
 });
 
 wifi.on('transition', function (status){
     send('status/'+simId+'/wifi', status.toState);
     debug('wifi status sent :', status.toState);
-});
-
-wifi.on('trajectories', function (trajectories) {
-    console.log('trajectories received');
-
-    trajectoriesCodec.encode(trajectories)
-    .then(function (message) {
-        send('measurement/'+simId+'/trajectories', message, {qos: 1});
-        measurementLogs.write(message + '\n');
-    });
 });
 
 
@@ -267,7 +268,6 @@ bluetooth.on('processed', function (results) {
 
     sixSenseCodec.encode(results).then(function(message){
         send('measurement/'+simId+'/bluetooth', message, {qos: 1});
-        measurementLogs.write(message + '\n');
     });
 });
 
@@ -366,6 +366,13 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     send('cmdResult/'+simId, JSON.stringify({command: 'closetunnel', result: 'OK'}));
                     send('status/'+simId+'/client', 'connected');
                     break;
+                case 'gettrajectories':
+                    var trajectories = wifi.getTrajectories();
+                    trajectoriesCodec.encode(trajectories, trajectoriesCodecOptions)
+                    .then(function (message) {
+                        send('measurement/'+simId+'/trajectories', message, {qos: 1});
+                    });
+                    break;
             }
             break;
 
@@ -447,6 +454,26 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         console.log('Error in changeDate :', err);
                     });
                     break;
+                case 'resumerecord':
+                    var mtype = commandArgs[1];
+                    if (mtype === "wifi")
+                        wifi.record(MEASURE_PERIOD);
+                    if (mtype === "bluetooth")
+                        bluetooth.record(MEASURE_PERIOD);
+                    if (mtype === "trajectories")
+                        wifi.startRecordingTrajectories();
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                    break;
+                case 'pauserecord':
+                    var mtype = commandArgs[1];
+                    if (mtype === "wifi")
+                        wifi.pause();
+                    if (mtype === "bluetooth")
+                        bluetooth.pause();
+                    if (mtype === "trajectories")
+                        wifi.stopRecordingTrajectories();
+                    sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                    break;
             }
             break;
 
@@ -466,28 +493,15 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'Error : '+err.msg}));
                     });
                     break;
-            }
-            break;
 
-        case 5:
-            // command with four parameters
-            switch(command) {
                 case 'init':                 // Initialize period, start and stop time
                     if (commandArgs[1].match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
-                        var newDate = commandArgs[4].toUpperCase().replace('T', ' ').split('.')[0];
 
                         MEASURE_PERIOD = parseInt(commandArgs[1], 10);
                         WAKEUP_HOUR_UTC = commandArgs[2];
                         SLEEP_HOUR_UTC = commandArgs[3];
 
-                        changeDate(newDate)
-                        .then(function () {
-                            sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
-                        })
-                        .catch(function (err) {
-                            console.log('Error in changeDate:', err);
-                            sendFunction(topic, JSON.stringify({command: command, result: err}));
-                        });
+                        sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                         debug('init done');
 
                     }
