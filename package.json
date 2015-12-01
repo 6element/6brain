@@ -11,7 +11,7 @@
   "license": "MIT",
   "dependencies": {
     "6bin": "^1.0.5",
-    "6sense": "1.1.0",
+    "6sense": "1.1.1",
     "es6-promise": "~2.3.0",
     "machina": "~1.1.2",
     "mqtt": "1.6.0",
