@@ -10,6 +10,11 @@ var bluetooth = require('6sense').bluetooth();
 var sixSenseCodec = require('pheromon-codecs').signalStrengths;
 var trajectoriesCodec = require('pheromon-codecs').trajectories;
 
+var trajectoriesCodecOptions = {
+    precisionSignalStrength: 1,
+    precisionDate: 30
+}
+
 var BinServer = require('6bin').BinServer;
 var binServer = new BinServer();
 
@@ -344,7 +349,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     break;
                 case 'gettrajectories':
                     var trajectories = wifi.getTrajectories();
-                    trajectoriesCodec.encode(trajectories)
+                    trajectoriesCodec.encode(trajectories, trajectoriesCodecOptions)
                     .then(function (message) {
                         send('measurement/'+simId+'/trajectories', message, {qos: 1});
                     });
