@@ -164,7 +164,7 @@ function mqttConnect() {
     client.on('connect', function(){
         console.log('connected to the server. ID :', simId);
         client.subscribe('all', {qos: 1});
-        client.subscribe(simId, {qos: 1});
+        client.subscribe(simId + '/#', {qos: 1});
         if (!inited) {
             send('init/' + simId, '');
             inited = true;
@@ -501,8 +501,14 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         WAKEUP_HOUR_UTC = commandArgs[2];
                         SLEEP_HOUR_UTC = commandArgs[3];
 
-                        sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
-                        debug('init done');
+                        restart6senseIfNeeded()
+                        .then(function(){
+                            sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                            debug('init done');
+                        })
+                        .catch(function(){
+                            sendFunction(topic, JSON.stringify({command: command, result: 'Error in restarting 6sense'}));
+                        });
 
                     }
                     else {
