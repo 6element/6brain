@@ -294,15 +294,13 @@ binServer.on('measurementRequest', function(request){
     var self = this;
     debug('msg received from 6bin client', request);
 
-    binServer.emit('6bin', request);
-
-    // send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
+    send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
 });
 
-var setBinsUrl = 'http://6element.fr/bins/update/';
+var setBinsUrl = 'http://6element.fr/bins/update/?s=' + PRIVATE.sixElementToken;;
 var getBinsUrl = 'http://6element.fr/bins/get/8?s=' + PRIVATE.sixElementToken;
 
-binServer.on('binRequest', function(request){
+binServer.on('binsRequest', function(request){
     /*
         bins request: {
             bins: [BinData],
@@ -312,7 +310,7 @@ binServer.on('binRequest', function(request){
     */
 
     var self = this;
-    debug('msg received from 6bin client', request);
+    console.log('msg received from 6bin client', request);
 
     var message = {
         url: setBinsUrl,
