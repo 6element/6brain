@@ -155,8 +155,7 @@ function mqttConnect() {
             clientId: simId,
             keepalive: 60*60,
             clean: false,
-            // Do not set to a value > 29 until this bug is fixed : https://github.com/mqttjs/MQTT.js/issues/346
-            reconnectPeriod: 1000 * 10
+            reconnectPeriod: 1000 * 60 * 10
         }
     );
 
@@ -164,7 +163,7 @@ function mqttConnect() {
     client.on('connect', function(){
         console.log('connected to the server. ID :', simId);
         client.subscribe('all', {qos: 1});
-        client.subscribe(simId, {qos: 1});
+        client.subscribe(simId + '/#', {qos: 1});
         if (!inited) {
             send('init/' + simId, '');
             inited = true;
@@ -181,8 +180,8 @@ function mqttConnect() {
         var message = buffer.toString();
         console.log("data received :", message, 'destination', destination);
 
-        if (destination === '6bin') {
-            binServer.emit('6bin', JSON.parse(message));
+        if (destination) {
+            binServer.emit(destination, JSON.parse(message));
         }
         else
             commandHandler(message, send, 'cmdResult/'+simId);
@@ -507,8 +506,14 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         WAKEUP_HOUR_UTC = commandArgs[2];
                         SLEEP_HOUR_UTC = commandArgs[3];
 
-                        sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
-                        debug('init done');
+                        restart6senseIfNeeded()
+                        .then(function(){
+                            sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
+                            debug('init done');
+                        })
+                        .catch(function(){
+                            sendFunction(topic, JSON.stringify({command: command, result: 'Error in restarting 6sense'}));
+                        });
 
                     }
                     else {
