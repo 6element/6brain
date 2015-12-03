@@ -29,6 +29,7 @@ var SSH_TIMEOUT = 20 * 1000;
 // ===
 
 var simId = PRIVATE.sim;
+var placeId;
 var sshProcess;
 var inited = false;
 
@@ -298,7 +299,6 @@ binServer.on('measurementRequest', function(request){
 });
 
 var setBinsUrl = 'http://6element.fr/bins/update/?s=' + PRIVATE.sixElementToken;;
-var getBinsUrl = 'http://6element.fr/bins/get/8?s=' + PRIVATE.sixElementToken;
 
 binServer.on('binsRequest', function(request){
     /*
@@ -308,22 +308,25 @@ binServer.on('binsRequest', function(request){
             (origin:) -> so that pheromon knows it needs to send back smg
         }
     */
+    
+    if (placeId){ // if placeId is not defined, 6brain shouldn't send bin list to 6element db
+        var self = this;
+        console.log('msg received from 6bin client', request);
 
-    var self = this;
-    console.log('msg received from 6bin client', request);
+        var message = {
+            url: setBinsUrl,
+            method: 'POST', // because this query will modify bins on 6element DB
+            data: {
+                pheromonId: placeId, // WARNING: placeId might not be defined yet
+                bins: request.bins
+            },
+            origin: request.origin,
+            index: request.index
+        };
 
-    var message = {
-        url: setBinsUrl,
-        method: 'POST', // because this query will modify bins on 6element DB
-        data: {
-            pheromonId: 8,
-            bins: request.bins
-        },
-        origin: request.origin,
-        index: request.index
-    };
-
-    send('url/' + simId, JSON.stringify(message), {qos: 1});
+        send('url/' + simId, JSON.stringify(message), {qos: 1});
+    }
+    
 });
 
 
@@ -503,6 +506,21 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         MEASURE_PERIOD = parseInt(commandArgs[1], 10);
                         WAKEUP_HOUR_UTC = commandArgs[2];
                         SLEEP_HOUR_UTC = commandArgs[3];
+
+                        placeId = commandArgs[4];
+
+                        if (placeId){
+                            var getBinsUrl = 'http://6element.fr/bins/get/' + placeId +'?s=' + PRIVATE.sixElementToken;
+
+                            var message = {
+                                url: getBinsUrl,
+                                method: 'GET',
+                                origin: '6bin'
+                            };
+
+                            send('url/' + simId, JSON.stringify(message), {qos: 1});
+                        }
+                        
 
                         restart6senseIfNeeded()
                         .then(function(){
