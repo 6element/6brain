@@ -308,7 +308,7 @@ binServer.on('binsRequest', function(request){
             (origin:) -> so that pheromon knows it needs to send back smg
         }
     */
-    
+
     if (placeId){ // if placeId is not defined, 6brain shouldn't send bin list to 6element db
         var self = this;
         console.log('msg received from 6bin client', request);
@@ -499,7 +499,10 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'Error : '+err.msg}));
                     });
                     break;
+            }
 
+        case 5:
+            switch(command){
                 case 'init':                 // Initialize period, start and stop time
                     if (commandArgs[1].match(/^\d{1,5}$/) && commandArgs[2].match(/^\d{1,2}$/) && commandArgs[3].match(/^\d{1,2}$/)) {
 
@@ -508,6 +511,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         SLEEP_HOUR_UTC = commandArgs[3];
 
                         placeId = commandArgs[4];
+                        console.log('placeID', placeId);
 
                         if (placeId){
                             var getBinsUrl = 'http://6element.fr/bins/get/' + placeId +'?s=' + PRIVATE.sixElementToken;
