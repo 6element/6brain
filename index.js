@@ -182,7 +182,7 @@ function mqttConnect() {
         console.log("data received :", message, 'destination', destination);
 
         if (destination === '6bin') {
-            binServer.emit('data', JSON.parse(message));
+            binServer.emit('6bin', JSON.parse(message));
         }
         else
             commandHandler(message, send, 'cmdResult/'+simId);
@@ -295,10 +295,13 @@ binServer.on('measurementRequest', function(request){
     var self = this;
     debug('msg received from 6bin client', request);
 
-    send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
+    binServer.emit('6bin', request);
+
+    // send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
 });
 
-var url = 'myURL';
+var setBinsUrl = 'http://6element.fr/bins/update/';
+var getBinsUrl = 'http://6element.fr/bins/get/8?s=' + PRIVATE.sixElementToken;
 
 binServer.on('binRequest', function(request){
     /*
@@ -313,9 +316,12 @@ binServer.on('binRequest', function(request){
     debug('msg received from 6bin client', request);
 
     var message = {
-        url: url,
+        url: setBinsUrl,
         method: 'POST', // because this query will modify bins on 6element DB
-        data: request.bins,
+        data: {
+            pheromonId: 8,
+            bins: request.bins
+        },
         origin: request.origin,
         index: request.index
     };
