@@ -278,38 +278,36 @@ bluetooth.on('transition', function (status){
 
 
 // 6BIN BLOCK
+function start6bin(placeId){
 
-binServer.start(3000);
+    var setBinsUrl = 'http://6element.fr/bins/update/?s=' + PRIVATE.sixElementToken;
+    var getBinsUrl = 'http://6element.fr/bins/get/' + placeId +'?s=' + PRIVATE.sixElementToken;
 
-// These are what 6brain receives from 6bin server
-binServer.on('measurementRequest', function(request){
-    /* 
-        measurement request: {
-            date:
-            value: [{}]
-            (index:) -> reference to the 6bin local pending promise
-            (origin:) -> so that pheromon knows it needs to send back smg
-        }
-    */
+    // These are what 6brain receives from 6bin server
+    binServer.on('measurementRequest', function(request){
+        /* 
+            measurement request: {
+                date:
+                value: [{}]
+                (index:) -> reference to the 6bin local pending promise
+                (origin:) -> so that pheromon knows it needs to send back smg
+            }
+        */
 
-    var self = this;
-    debug('msg received from 6bin client', request);
+        debug('msg received from 6bin client', request);
 
-    send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
-});
+        send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
+    });
 
-var setBinsUrl = 'http://6element.fr/bins/update/?s=' + PRIVATE.sixElementToken;;
+    binServer.on('setBinsRequest', function(request){
+        /*
+            setBins request: {
+                bins: [BinData],
+                (index:) -> reference to the 6bin local pending promise
+                (origin:) -> so that pheromon knows it needs to send back smg
+            }
+        */
 
-binServer.on('binsRequest', function(request){
-    /*
-        bins request: {
-            bins: [BinData],
-            (index:) -> reference to the 6bin local pending promise
-            (origin:) -> so that pheromon knows it needs to send back smg
-        }
-    */
-
-    if (placeId){ // if placeId is not defined, 6brain shouldn't send bin list to 6element db
         var self = this;
         console.log('msg received from 6bin client', request);
 
@@ -325,9 +323,39 @@ binServer.on('binsRequest', function(request){
         };
 
         send('url/' + simId, JSON.stringify(message), {qos: 1});
-    }
-    
-});
+        
+    });
+
+    binServer.on('getBinsRequest', function(request){
+        /*
+            getBins request: {
+                (index:) -> reference to the 6bin local pending promise
+                (origin:) -> so that pheromon knows it needs to send back smg
+            }
+        */
+
+        var self = this;
+        console.log('msg received from 6bin client', request);
+
+        var message = {
+            url: getBinsUrl,
+            method: 'POST', // because this query will modify bins on 6element DB
+            data: {
+                pheromonId: placeId, // WARNING: placeId might not be defined yet
+                bins: request.bins
+            },
+            origin: request.origin,
+            index: request.index
+        };
+
+        send('url/' + simId, JSON.stringify(message), {qos: 1});
+    });
+
+    binServer.start();
+
+}
+
+
 
 
 // COMMAND BLOCK
@@ -513,19 +541,9 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         placeId = commandArgs[4];
                         console.log('placeID', placeId);
 
-                        if (placeId){
-                            var getBinsUrl = 'http://6element.fr/bins/get/' + placeId +'?s=' + PRIVATE.sixElementToken;
-
-                            var message = {
-                                url: getBinsUrl,
-                                method: 'GET',
-                                origin: '6bin'
-                            };
-
-                            send('url/' + simId, JSON.stringify(message), {qos: 1});
-                        }
+                        if (placeId) // can't start 6bin if placeId is not valid
+                            start6bin();
                         
-
                         restart6senseIfNeeded()
                         .then(function(){
                             sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
@@ -551,3 +569,4 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
 }
 
 mqttConnect();
+
