@@ -308,7 +308,6 @@ function start6bin(placeId){
             }
         */
 
-        var self = this;
         console.log('msg received from 6bin client', request);
 
         var message = {
@@ -334,7 +333,6 @@ function start6bin(placeId){
             }
         */
 
-        var self = this;
         console.log('msg received from 6bin client', request);
 
         var message = {
