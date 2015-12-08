@@ -337,7 +337,7 @@ function start6bin(placeId){
 
         var message = {
             url: getBinsUrl,
-            method: 'POST', // because this query will modify bins on 6element DB
+            method: 'GET', // because this query will modify bins on 6element DB
             data: {
                 pheromonId: placeId, // WARNING: placeId might not be defined yet
                 bins: request.bins
