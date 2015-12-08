@@ -338,10 +338,6 @@ function start6bin(placeId){
         var message = {
             url: getBinsUrl,
             method: 'GET', // because this query will modify bins on 6element DB
-            data: {
-                pheromonId: placeId, // WARNING: placeId might not be defined yet
-                bins: request.bins
-            },
             origin: request.origin,
             index: request.index
         };
@@ -540,7 +536,7 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         console.log('placeID', placeId);
 
                         if (placeId) // can't start 6bin if placeId is not valid
-                            start6bin();
+                            start6bin(placeId);
                         
                         restart6senseIfNeeded()
                         .then(function(){
