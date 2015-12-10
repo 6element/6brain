@@ -154,7 +154,7 @@ function mqttConnect() {
             username: simId,
             password: PRIVATE.mqttToken,
             clientId: simId,
-            keepalive: 60*60,
+            keepalive: 60*10,
             clean: false,
             reconnectPeriod: 1000 * 60 * 10
         }
