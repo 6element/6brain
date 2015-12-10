@@ -216,7 +216,7 @@ function openTunnel(queenPort, antPort, target) {
         });
         // if no error after SSH_TIMEOUT 
         setTimeout(function(){reject({process: myProcess, msg:"SSH timeout"}); }, SSH_TIMEOUT);
-    })
+    });
 
 }
 
@@ -373,7 +373,9 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     break;
                 case 'reboot':               // Reboot the system
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
-                    spawn('reboot');
+                    setTimeout(function () {
+                        spawn('reboot');
+                    }, 1000);
                     break;
                 case 'resumerecord':         // Start recording
                     wifi.record(MEASURE_PERIOD);
@@ -386,7 +388,8 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'closetunnel':          // Close the SSH tunnel
-                    sshProcess.kill('SIGINT');
+                    if (sshProcess)
+                        sshProcess.kill('SIGINT');
                     setTimeout(function () {
                         if (sshProcess)
                             sshProcess.kill();
