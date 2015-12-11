@@ -1,0 +1,10 @@
+[Service]
+ExecStart=COMMAND
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=NAME
+User=root
+
+[Install]
+WantedBy=multi-user.target
