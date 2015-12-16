@@ -8,9 +8,9 @@ var SerialPort = SP.SerialPort;
 
 var privatePath = path.join(__dirname, '..', 'PRIVATE.json');
 
-exec('cat ' + privatePath + ' | grep -e \'"sim": "unknown"\'', function (err, stdout) {
+exec('cat ' + privatePath + ' | grep -e \'"sim": "undefined"\'', function (err, stdout) {
 	if (err || stdout.length === 0)
-		throw new Error('Cannot find an unknown field in the PRIVATE.json');
+		throw new Error('Cannot find an undefined field in the PRIVATE.json');
 	else {
 
 		var serialPort = new SerialPort('/dev/serial/by-id/usb-HUAWEI_HUAWEI_HiLink-if02-port0', {
@@ -26,7 +26,7 @@ exec('cat ' + privatePath + ' | grep -e \'"sim": "unknown"\'', function (err, st
 				console.log('error received from the modem');
 			else if (data.match(/ICCID: (.*)/)) {
 				console.log('SIM ID :', data.match(/ICCID: (.*)/)[1]);
-				exec('cat ' + privatePath + ' | sed \'s/"sim": "unknown"/"sim": "' + data.match(/ICCID: (.*)/)[1].trim() + '"/g\' > '+privatePath+'.tmp && mv '+privatePath+'.tmp ' + privatePath, process.exit);
+				exec('cat ' + privatePath + ' | sed \'s/"sim": "undefined"/"sim": "' + data.match(/ICCID: (.*)/)[1].trim() + '"/g\' > '+privatePath+'.tmp && mv '+privatePath+'.tmp ' + privatePath, process.exit);
 			}
 		});
 
