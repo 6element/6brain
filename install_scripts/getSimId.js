@@ -26,7 +26,7 @@ exec('cat ' + privatePath + ' | grep -e \'"sim": "unknown"\'', function (err, st
 				console.log('error received from the modem');
 			else if (data.match(/ICCID: (.*)/)) {
 				console.log('SIM ID :', data.match(/ICCID: (.*)/)[1]);
-				exec('cat ' + privatePath + ' | sed \'s/"sim": "unknown"/"sim": "' + data.match(/ICCID: (.*)/)[1].trim() + '"/g\' > tmp && mv tmp ' + privatePath, process.exit);
+				exec('cat ' + privatePath + ' | sed \'s/"sim": "unknown"/"sim": "' + data.match(/ICCID: (.*)/)[1].trim() + '"/g\' > '+privatePath+'.tmp && mv '+privatePath+'.tmp ' + privatePath, process.exit);
 			}
 		});
 
