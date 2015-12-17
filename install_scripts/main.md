@@ -85,9 +85,10 @@
     > ~/Desktop/to_static && \
     chmod 555 ~/Desktop/to_static;
 
-## Add a reboot cron job
+## Add a reboot cron job and a reconnect cron
 
-    ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "0 5 * * * /sbin/reboot" ) | crontab
+    ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "0 5 * * * /sbin/reboot\n" ) | crontab
+    ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "0 * * * * /bin/systemctl restart wvdial\n" ) | crontab
     
 ## Install 6brain
 
