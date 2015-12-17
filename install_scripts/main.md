@@ -47,6 +47,7 @@
     sed 's/NAME/wvdial/' | \
     sed 's/COMMAND/\/usr\/bin\/wvdial 3G/' \
     > ~/wvdial.service.tmp;
+    echo -e '\n[Unit]\nBefore=6brain.service\n' >> ~/wvdial.service.tmp
     sudo mv ~/wvdial.service.tmp /usr/lib/systemd/system/wvdial.service
 
 
@@ -123,6 +124,7 @@
     sed 's/NAME/GetSimId/' | \
     sed 's/COMMAND/\/usr\/bin\/node \/home\/pi\/6brain\/install_scripts\/getSimId.js/' \
     > ~/getSimId.service.tmp;
+    echo -e '\n[Unit]\nBefore=wvdial.service\n' >> ~/getSimId.service.tmp;
     sudo mv ~/getSimId.service.tmp /usr/lib/systemd/system/getSimId.service
     sudo systemctl enable getSimId
 
@@ -132,7 +134,7 @@
     echo -e "Host kerrigan\nUser sensorSSH\nHostname 62.210.245.148\nPort 9999\nStrictHostKeyChecking no\n" >> /root/.ssh/config
     echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCynvUCNh7m3P3zHYKpRkx2iF4zywVWc10Ykyq171NelWBP5y7YUvvd+/cCf4ZIhn1YuLRmbdAjscwEnkQm239FPutIWOZbuRIAoGZP8Fgcx8gzDx4/CQ2dydMErI3J+jen1JX6oSG8Q1DPgvHBcKN6cW2t976oHnTsM8eX5Zy2I1HB3RsE4XMZaYdLbtwEhb349txH1J3oE9YmVkqVWvDocyvoy6rTMnZlVEwhVGMgB39uA32ife8e06upoDBpJWWFlvDPKMkEpQJBtQHGjhGhQyydyB1t1B8yWVrpO+DR+3Q8I8egHmj8z3acvN8e3YG7QVt1dxYCQctkWz7UExA7JvLM6rFCDQUOSSCcVskcdZ9WjKf7EBFhquzXTqtj59V7fIfwDEAhtlXIfxqyxmrC12OSaM7AON094P4VaR3+flxkEo23REG0cLWIlPRyMHTE8v0Epv2+z+YbATwNIWj1ZmlxKmjjH/UiyZ5ipIPlzWK1spQG9a6OA52lGgsSnW0Bl5c/kImICDCF9as96jQNX2E5r1KMhUH3g2IvJGsOQK8xvovk+v2NYaDLaoViqBb8Pe7akDigYHf+dSRET93Ek0vrNTw61qjyavLGkDJlLW4Oxe/41QIwGbeoHSaoL6AmF+c99fyp4R6//C7jJvgB7DdjZhHUlRv1zqjIq5JKdw== sensorSSH@antsM1" >> /root/.ssh/authorized_keys
     ssh-keygen -t rsa
-    # add sensor idraspub to server
+    # add sensor id_rsa.pub to server
     
 
 ### TODO BY HAND : Change the RPi password
