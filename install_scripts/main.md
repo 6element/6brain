@@ -5,6 +5,7 @@
 
     sudo apt-get update -y;
     sudo apt-get upgrade -y;
+    sudo apt-get remove -y libreoffice-* python-pygame  python3-pygame wolfram-engine python-minecraftpi python3-minecraftpi scratch greenfoot bluej;
     sudo apt-get install -y git-core build-essential vim;
 
 ## Install some dependencies/utils
