@@ -1,5 +1,5 @@
 # This file describes how to install a 6element sensor under Raspbian(RPi2)
-#### Note : You can run this automatically
+#### Note : You can run this automatically by typing `sh main.md`
 
 ## Update the system
 
@@ -43,13 +43,14 @@
 ## Install wvdial and configure it
 
     sudo apt-get install -y wvdial
-    sudo sh -c "curl -sSL https://gist.github.com/vallettea/990f7256b27db37ea67b/raw/wvdial.conf > /etc/wvdial.conf"
+    sudo sh -c "cat ./wvdial.conf > /etc/wvdial.conf"
     sudo mkdir /usr/lib/systemd/system/
     sudo touch /usr/lib/systemd/system/wvdial.service
-    curl -sSL https://gist.githubusercontent.com/4rzael/675d09e5eabf4f5aa886/raw/script_NAME.service | \
+    cat ./script_NAME.service | \
     sed 's/NAME/wvdial/' | \
     sed 's/COMMAND/\/usr\/bin\/wvdial 3G/' \
     > ~/wvdial.service.tmp;
+    echo -e '\n[Unit]\nBefore=6brain.service\n' >> ~/wvdial.service.tmp
     sudo mv ~/wvdial.service.tmp /usr/lib/systemd/system/wvdial.service
 
 
@@ -63,7 +64,7 @@
 
 ## Remove wlan0 and wlan1 at startup (otherwise, it would wait infinitely)
 
-    curl -sSL https://gist.githubusercontent.com/4rzael/675d09e5eabf4f5aa886/raw/script_init_interfaces | bash -
+    cat ./script_init_interfaces.sh | bash -
     
 ## Remove these packets for a good network conf
 
@@ -76,11 +77,11 @@
 
 ## Download the two scripts to change the ethernet mode
 
-    curl -sSL https://gist.githubusercontent.com/4rzael/675d09e5eabf4f5aa886/raw/script_to_dhcp \
+    cat ./script_to_dhcp.sh \
     > ~/Desktop/to_dhcp && \
     chmod 555 ~/Desktop/to_dhcp;
     
-    curl -sSL https://gist.githubusercontent.com/4rzael/675d09e5eabf4f5aa886/raw/script_to_static \
+    cat ./script_to_static.sh \
     > ~/Desktop/to_static && \
     chmod 555 ~/Desktop/to_static;
 
@@ -102,7 +103,7 @@
 
     mkdir ~/.config/autostart/;
     touch ~/.config/autostart/6bin.desktop;
-    curl -sSL https://gist.githubusercontent.com/4rzael/675d09e5eabf4f5aa886/raw/script_APPNAME.desktop | \
+    cat ./script_APPNAME.desktop | \
     sed 's/APPNAME/6bin/' | \
     sed 's/COMMAND/\/usr\/bin\/chromium-browser --kiosk --safebrowsing-disable-auto-update --bwsi --disable-background-networking --disable-extensions --disable-sync --no-experiments --no-first-run --no-pings --disable-quic --disable-infobars 127.0.0.1:3000/' \
     > ~/.config/autostart/6bin.desktop;
@@ -111,22 +112,32 @@
 
     sudo mkdir /usr/lib/systemd/system/
     sudo touch /usr/lib/systemd/system/6brain.service
-    curl -sSL https://gist.githubusercontent.com/4rzael/675d09e5eabf4f5aa886/raw/script_NAME.service | \
+    cat ./script_NAME.service | \
     sed 's/NAME/6brain/' | \
     sed 's/COMMAND/\/usr\/local\/bin\/node \/home\/pi\/6brain\/index.js/' \
     > ~/6brain.service.tmp;
     sudo mv ~/6brain.service.tmp /usr/lib/systemd/system/6brain.service
     sudo systemctl enable 6brain
     
-    sudo systemctl enable 6brain
+## Make the PRIVATE filler start at sartup
+
+    cat ./script_NAME.service | \
+    grep -v Restart | \
+    sed 's/root/pi/' | \
+    sed 's/NAME/GetSimId/' | \
+    sed 's/COMMAND/\/usr\/local\/bin\/node \/home\/pi\/6brain\/install_scripts\/getSimId.js/' \
+    > ~/getSimId.service.tmp;
+    echo -e '\n[Unit]\nBefore=wvdial.service\n' >> ~/getSimId.service.tmp;
+    sudo mv ~/getSimId.service.tmp /usr/lib/systemd/system/getSimId.service
+    sudo systemctl enable getSimId
 
 ### TODO BY HAND: create a ssh profile for sensorSSH
 
     mkdir -p /root/.ssh
-    echo -e "Host kerrigan\nUser sensorSSH\nHostname 62.210.245.148\nPort 9999\n" >> /root/.ssh/config
+    echo -e "Host kerrigan\nUser sensorSSH\nHostname 62.210.245.148\nPort 9999\nStrictHostKeyChecking no\n" >> /root/.ssh/config
     echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCynvUCNh7m3P3zHYKpRkx2iF4zywVWc10Ykyq171NelWBP5y7YUvvd+/cCf4ZIhn1YuLRmbdAjscwEnkQm239FPutIWOZbuRIAoGZP8Fgcx8gzDx4/CQ2dydMErI3J+jen1JX6oSG8Q1DPgvHBcKN6cW2t976oHnTsM8eX5Zy2I1HB3RsE4XMZaYdLbtwEhb349txH1J3oE9YmVkqVWvDocyvoy6rTMnZlVEwhVGMgB39uA32ife8e06upoDBpJWWFlvDPKMkEpQJBtQHGjhGhQyydyB1t1B8yWVrpO+DR+3Q8I8egHmj8z3acvN8e3YG7QVt1dxYCQctkWz7UExA7JvLM6rFCDQUOSSCcVskcdZ9WjKf7EBFhquzXTqtj59V7fIfwDEAhtlXIfxqyxmrC12OSaM7AON094P4VaR3+flxkEo23REG0cLWIlPRyMHTE8v0Epv2+z+YbATwNIWj1ZmlxKmjjH/UiyZ5ipIPlzWK1spQG9a6OA52lGgsSnW0Bl5c/kImICDCF9as96jQNX2E5r1KMhUH3g2IvJGsOQK8xvovk+v2NYaDLaoViqBb8Pe7akDigYHf+dSRET93Ek0vrNTw61qjyavLGkDJlLW4Oxe/41QIwGbeoHSaoL6AmF+c99fyp4R6//C7jJvgB7DdjZhHUlRv1zqjIq5JKdw== sensorSSH@antsM1" >> /root/.ssh/authorized_keys
     ssh-keygen -t rsa
-    # add sensor idraspub to server
+    # add sensor id_rsa.pub to server
     
 
 ### TODO BY HAND : Change the RPi password
