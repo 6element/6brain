@@ -88,7 +88,7 @@
 ## Add a reboot cron job and a reconnect cron
 
     ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "0 5 * * * /sbin/reboot\n" ) | crontab
-    ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "0 * * * * /bin/systemctl restart wvdial\n" ) | crontab
+    ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "5 * * * * /bin/systemctl restart wvdial\n" ) | crontab
     
 ## Install 6brain
 
