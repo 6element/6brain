@@ -124,7 +124,6 @@
 
     cat ./script_NAME.service | \
     grep -v Restart | \
-    sed 's/root/pi/' | \
     sed 's/NAME/GetSimId/' | \
     sed 's/COMMAND/\/usr\/local\/bin\/node \/home\/pi\/6brain\/install_scripts\/getSimId.js/' \
     > ~/getSimId.service.tmp;
