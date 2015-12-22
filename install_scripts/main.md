@@ -5,6 +5,7 @@
 
     sudo apt-get update -y;
     sudo apt-get upgrade -y;
+    sudo apt-get remove -y libreoffice-* python-pygame  python3-pygame wolfram-engine python-minecraftpi python3-minecraftpi scratch greenfoot bluej;
     sudo apt-get install -y git-core build-essential vim;
 
 ## Install some dependencies/utils
@@ -32,10 +33,13 @@
 
 ## Install node and npm
 
-    curl -sL https://deb.nodesource.com/setup_0.10 | sudo -E bash -;
-    sudo apt-get install -y nodejs;
-    sudo ln -s `which nodejs` /usr/local/bin/node -f;
-    sudo ln -s `which nodejs` `which nodejs | sed s/nodejs/node/` -f;
+    wget http://nodejs.org/dist/v4.2.3/node-v4.2.3-linux-armv7l.tar.gz
+    tar xvzf node-v4.2.3-linux-armv7l.tar.gz
+    sudo mkdir /opt/node
+    sudo cp -r node-v4.2.3-linux-armv7l/* /opt/node
+    sudo ln -s /opt/node/bin/node /usr/local/bin/node
+    sudo ln -s /opt/node/bin/npm /usr/local/bin/npm
+    sudo npm install npm@3.5.2 -g
 
 ## Install wvdial and configure it
 
@@ -82,9 +86,10 @@
     > ~/Desktop/to_static && \
     chmod 555 ~/Desktop/to_static;
 
-## Add a reboot cron job
+## Add a reboot cron job and a reconnect cron
 
-    ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "0 5 * * * /sbin/reboot" ) | crontab
+    ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "0 5 * * * /sbin/reboot\n" ) | crontab
+    ( crontab -l 2>/dev/null | grep -Fv ntpdate ; printf -- "5 * * * * /bin/systemctl restart wvdial\n" ) | crontab
     
 ## Install 6brain
 
@@ -111,7 +116,7 @@
     sudo touch /usr/lib/systemd/system/6brain.service
     cat ./script_NAME.service | \
     sed 's/NAME/6brain/' | \
-    sed 's/COMMAND/\/usr\/bin\/node \/home\/pi\/6brain\/index.js/' \
+    sed 's/COMMAND/\/usr\/local\/bin\/node \/home\/pi\/6brain\/index.js/' \
     > ~/6brain.service.tmp;
     sudo mv ~/6brain.service.tmp /usr/lib/systemd/system/6brain.service
     sudo systemctl enable 6brain
@@ -120,9 +125,8 @@
 
     cat ./script_NAME.service | \
     grep -v Restart | \
-    sed 's/root/pi/' | \
-    sed 's/NAME/GetSimId/' | \
-    sed 's/COMMAND/\/usr\/bin\/node \/home\/pi\/6brain\/install_scripts\/get6brainId.js/' \
+    sed 's/NAME/Get6brainId/' | \
+    sed 's/COMMAND/\/usr\/local\/bin\/node \/home\/pi\/6brain\/install_scripts\/get6brainId.js/' \
     > ~/get6brainId.service.tmp;
     echo -e '\n[Unit]\nBefore=wvdial.service\n' >> ~/get6brainId.service.tmp;
     sudo mv ~/get6brainId.service.tmp /usr/lib/systemd/system/get6brainId.service

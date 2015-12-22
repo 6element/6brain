@@ -29,7 +29,16 @@ if (!privateJson.sim) {
 
 			console.log('SIM ID :', simId);
 			privateJson.sim = simId;
-			fs.writeFile(privatePath, JSON.stringify(privateJson), process.exit);
+			fs.writeFile(privatePath, JSON.stringify(privateJson), function(){
+				// change hostname
+				var hostname = "ant-" + simId.slice(-3)
+				exec("cat /etc/hosts | sed s/ant-xxx/" + hostname + "/ > /tmp/hosts.tmp && mv /tmp/hosts.tmp /etc/hosts", function(){
+					exec("hostnamectl set-hostname " + hostname, function(){
+						exec("echo '" + hostname + "' > /etc/hostname", process.exit)
+					})
+				})
+			});
+			
 		}
 	});
 

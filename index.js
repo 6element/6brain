@@ -259,22 +259,22 @@ wifi.on('transition', function (status){
 
 // 6SENSE BLUETOOTH BLOCK
 
-bluetooth.on('processed', function (results) {
-    console.log('bluetooth measurements received');
-    debug({
-        date: results.date,
-        signals: results.devices.length
-    });
+// bluetooth.on('processed', function (results) {
+//     console.log('bluetooth measurements received');
+//     debug({
+//         date: results.date,
+//         signals: results.devices.length
+//     });
 
-    sixSenseCodec.encode(results).then(function(message){
-        send('measurement/'+simId+'/bluetooth', message, {qos: 1});
-    });
-});
+//     sixSenseCodec.encode(results).then(function(message){
+//         send('measurement/'+simId+'/bluetooth', message, {qos: 1});
+//     });
+// });
 
-bluetooth.on('transition', function (status){
-    send('status/'+simId+'/bluetooth', status.toState);
-    debug('bluetooth status sent :', status.toState);
-});
+// bluetooth.on('transition', function (status){
+//     send('status/'+simId+'/bluetooth', status.toState);
+//     debug('bluetooth status sent :', status.toState);
+// });
 
 
 // 6BIN BLOCK
