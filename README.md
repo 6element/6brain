@@ -9,7 +9,7 @@ Juste use `node index.js` to start everything. You should create a file called `
 ```
 {
         "mqttToken": "zzzzzz", #token for mqtt auth
-        "sim": "xxxxxxxxx", #id for auth
+        "id": "xxxxxxxxx", #id for auth
         "host":"xx.xx.xx.xx", #ip address of mqtt broker
         "port":... #for mqtt,
         "PIN": 0000
