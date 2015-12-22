@@ -1,0 +1,30 @@
+'use strict';
+
+var exec = require('child_process').exec;
+var path = require('path');
+var fs = require('fs');
+
+var SP = require('serialport');
+var SerialPort = SP.SerialPort;
+
+var privatePath = path.join(__dirname, '..', 'PRIVATE.json');
+var privateJson = require(privatePath);
+
+if (!privateJson)
+	throw new Error('Error in PRIVATE.json');
+if (!privateJson.id) {
+
+	exec('ifconfig | grep eth0 | grep -Po "(?<=HWaddr )(.*)"', function (err, stdout) {
+		var id;
+
+		if (err) {
+			console.log(err);
+			process.exit(1);
+		}
+
+		id = stdout.toString().trim().replace(/-/g, '').replace(/:/g, '');
+		console.log('ID :', id);
+		privateJson.id = id;
+		fs.writeFile(privatePath, JSON.stringify(privateJson), process.exit);
+	});
+}

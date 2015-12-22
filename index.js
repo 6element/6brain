@@ -28,7 +28,7 @@ var SLEEP_HOUR_UTC = '16';
 var SSH_TIMEOUT = 20 * 1000;
 // ===
 
-var simId = PRIVATE.sim;
+var id = PRIVATE.id;
 var placeId;
 var sshProcess;
 var inited = false;
@@ -92,7 +92,7 @@ function createTrajectoryJob() {
         var trajectories = wifi.getTrajectories();
         trajectoriesCodec.encode(trajectories, trajectoriesCodecOptions)
         .then(function (message) {
-            send('measurement/'+simId+'/trajectories', message, {qos: 1});
+            send('measurement/'+id+'/trajectories', message, {qos: 1});
         });
     });
 }
@@ -134,26 +134,26 @@ function changeDate(newDate) {
 /*
 ** Subscribed on :
 **  all
-**  simId
+**  id
 **
 ** Publish on :
-**  init/simId
-**  status/simId/wifi
-**  status/simId/bluetooth
-**  status/simId/client
-**  measurement/simId/wifi
-**  measurement/simId/bluetooth
-**  measurement/simId/trajectories
-**  cmdResult/simId
+**  init/id
+**  status/id/wifi
+**  status/id/bluetooth
+**  status/id/client
+**  measurement/id/wifi
+**  measurement/id/bluetooth
+**  measurement/id/trajectories
+**  cmdResult/id
 */
 
 function mqttConnect() {
 
     client = mqtt.connect('mqtt://' + PRIVATE.host + ':' + PRIVATE.port,
         {
-            username: simId,
+            username: id,
             password: PRIVATE.mqttToken,
-            clientId: simId,
+            clientId: id,
             keepalive: 60*10,
             clean: false,
             reconnectPeriod: 1000 * 60 * 10
@@ -162,11 +162,11 @@ function mqttConnect() {
 
 
     client.on('connect', function(){
-        console.log('connected to the server. ID :', simId);
+        console.log('connected to the server. ID :', id);
         client.subscribe('all', {qos: 1});
-        client.subscribe(simId + '/#', {qos: 1});
+        client.subscribe(id + '/#', {qos: 1});
         if (!inited) {
-            send('init/' + simId, '');
+            send('init/' + id, '');
             inited = true;
         }
     });
@@ -176,7 +176,7 @@ function mqttConnect() {
     })
 
     client.on('message', function(topic, buffer) {
-        var destination = topic.split('/')[1]; // subtopics[0] is simId or all => irrelevant
+        var destination = topic.split('/')[1]; // subtopics[0] is id or all => irrelevant
 
         var message = buffer.toString();
         console.log("data received :", message, 'destination', destination);
@@ -185,7 +185,7 @@ function mqttConnect() {
             binServer.emit(destination, JSON.parse(message));
         }
         else
-            commandHandler(message, send, 'cmdResult/'+simId);
+            commandHandler(message, send, 'cmdResult/'+id);
     });
 }
 
@@ -247,12 +247,12 @@ wifi.on('processed', function (results) {
     });
 
     sixSenseCodec.encode(results).then(function(message){
-        send('measurement/'+simId+'/wifi', message, {qos: 1});
+        send('measurement/'+id+'/wifi', message, {qos: 1});
     });
 });
 
 wifi.on('transition', function (status){
-    send('status/'+simId+'/wifi', status.toState);
+    send('status/'+id+'/wifi', status.toState);
     debug('wifi status sent :', status.toState);
 });
 
@@ -267,12 +267,12 @@ wifi.on('transition', function (status){
 //     });
 
 //     sixSenseCodec.encode(results).then(function(message){
-//         send('measurement/'+simId+'/bluetooth', message, {qos: 1});
+//         send('measurement/'+id+'/bluetooth', message, {qos: 1});
 //     });
 // });
 
 // bluetooth.on('transition', function (status){
-//     send('status/'+simId+'/bluetooth', status.toState);
+//     send('status/'+id+'/bluetooth', status.toState);
 //     debug('bluetooth status sent :', status.toState);
 // });
 
@@ -296,7 +296,7 @@ function start6bin(placeId){
 
         debug('msg received from 6bin client', request);
 
-        send('measurement/' + simId + '/bin', JSON.stringify(request), {qos: 1});
+        send('measurement/' + id + '/bin', JSON.stringify(request), {qos: 1});
     });
 
     binServer.on('setBinsRequest', function(request){
@@ -321,7 +321,7 @@ function start6bin(placeId){
             index: request.index
         };
 
-        send('url/' + simId, JSON.stringify(message), {qos: 1});
+        send('url/' + id, JSON.stringify(message), {qos: 1});
         
     });
 
@@ -342,7 +342,7 @@ function start6bin(placeId){
             index: request.index
         };
 
-        send('url/' + simId, JSON.stringify(message), {qos: 1});
+        send('url/' + id, JSON.stringify(message), {qos: 1});
     });
 
     binServer.start();
@@ -367,8 +367,8 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
             // command with no parameter
             switch(command) {
                 case 'status':               // Send statuses
-                    send('status/'+simId+'/wifi', wifi.state);
-                    send('status/'+simId+'/bluetooth', bluetooth.state);
+                    send('status/'+id+'/wifi', wifi.state);
+                    send('status/'+id+'/bluetooth', bluetooth.state);
                     sendFunction(topic, JSON.stringify({command: command, result: 'OK'}));
                     break;
                 case 'reboot':               // Reboot the system
@@ -394,14 +394,14 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                         if (sshProcess)
                             sshProcess.kill();
                     }, 2000);
-                    send('cmdResult/'+simId, JSON.stringify({command: 'closetunnel', result: 'OK'}));
-                    send('status/'+simId+'/client', 'connected');
+                    send('cmdResult/'+id, JSON.stringify({command: 'closetunnel', result: 'OK'}));
+                    send('status/'+id+'/client', 'connected');
                     break;
                 case 'gettrajectories':
                     var trajectories = wifi.getTrajectories();
                     trajectoriesCodec.encode(trajectories, trajectoriesCodecOptions)
                     .then(function (message) {
-                        send('measurement/'+simId+'/trajectories', message, {qos: 1});
+                        send('measurement/'+id+'/trajectories', message, {qos: 1});
                     });
                     break;
             }
@@ -515,13 +515,13 @@ function commandHandler(fullCommand, sendFunction, topic) { // If a status is se
                     openTunnel(commandArgs[1], commandArgs[2], commandArgs[3])
                     .then(function(process){
                         sshProcess = process;
-                        send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'OK'}));
-                        send('status/'+simId+'/client', 'tunnelling');
+                        send('cmdResult/'+id, JSON.stringify({command: 'opentunnel', result: 'OK'}));
+                        send('status/'+id+'/client', 'tunnelling');
                     })
                     .catch(function(err){
                         console.log(err.msg);
                         console.log("Could not make the tunnel. Cleanning...");
-                        send('cmdResult/'+simId, JSON.stringify({command: 'opentunnel', result: 'Error : '+err.msg}));
+                        send('cmdResult/'+id, JSON.stringify({command: 'opentunnel', result: 'Error : '+err.msg}));
                     });
                     break;
             }
