@@ -11,20 +11,28 @@ var privatePath = path.join(__dirname, '..', 'PRIVATE.json');
 var privateJson = require(privatePath);
 
 if (!privateJson)
-	throw new Error('Error in PRIVATE.json');
+    throw new Error('Error in PRIVATE.json');
 if (!privateJson.id) {
 
-	exec('ifconfig | grep eth0 | grep -Po "(?<=HWaddr )(.*)"', function (err, stdout) {
-		var id;
+    exec('ifconfig | grep eth0 | grep -Po "(?<=HWaddr )(.*)"', function (err, stdout) {
+        var id;
 
-		if (err) {
-			console.log(err);
-			process.exit(1);
-		}
+        if (err) {
+            console.log(err);
+            process.exit(1);
+        }
 
-		id = stdout.toString().trim().replace(/-/g, '').replace(/:/g, '');
-		console.log('ID :', id);
-		privateJson.id = id;
-		fs.writeFile(privatePath, JSON.stringify(privateJson), process.exit);
-	});
+        id = stdout.toString().trim().replace(/-/g, '').replace(/:/g, '');
+        console.log('ID :', id);
+        privateJson.id = id;
+
+        fs.writeFile(privatePath, JSON.stringify(privateJson), function () {
+            var hostname = 'ant-' + id;
+            exec('cat /etc/hosts | sed s/ant-xxx/' + hostname + '/ > /tmp/hosts.tmp && mv /tmp/hosts.tmp /etc/hosts', function() {
+                exec('hostnamectl set-hostname ' + hostname, function () {
+                    exec('echo "' + hostname + '" > /etc/hostname', process.exit);
+                });
+            });
+        });
+    });
 }
