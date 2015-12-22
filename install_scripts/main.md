@@ -122,11 +122,11 @@
     grep -v Restart | \
     sed 's/root/pi/' | \
     sed 's/NAME/GetSimId/' | \
-    sed 's/COMMAND/\/usr\/bin\/node \/home\/pi\/6brain\/install_scripts\/getSimId.js/' \
-    > ~/getSimId.service.tmp;
-    echo -e '\n[Unit]\nBefore=wvdial.service\n' >> ~/getSimId.service.tmp;
-    sudo mv ~/getSimId.service.tmp /usr/lib/systemd/system/getSimId.service
-    sudo systemctl enable getSimId
+    sed 's/COMMAND/\/usr\/bin\/node \/home\/pi\/6brain\/install_scripts\/get6brainId.js/' \
+    > ~/get6brainId.service.tmp;
+    echo -e '\n[Unit]\nBefore=wvdial.service\n' >> ~/get6brainId.service.tmp;
+    sudo mv ~/get6brainId.service.tmp /usr/lib/systemd/system/get6brainId.service
+    sudo systemctl enable get6brainId
 
 ### TODO BY HAND: create a ssh profile for sensorSSH
 
