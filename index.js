@@ -16,7 +16,7 @@ var trajectoriesCodecOptions = {
 }
 
 var BinServer = require('6bin').BinServer;
-var binServer = new BinServer();
+var binServer = new BinServer(__dirname + '/node_modules/6bin');
 
 var PRIVATE = require('./PRIVATE.json');
 
@@ -345,7 +345,7 @@ function start6bin(placeId){
         send('url/' + id, JSON.stringify(message), {qos: 1});
     });
 
-    binServer.start();
+    binServer.start(3000);
 
 }
 
