@@ -280,8 +280,10 @@ wifi.on('transition', function (status){
 // 6BIN BLOCK
 function start6bin(placeId){
 
-    var setBinsUrl = 'https://6element.fr/bins/update/?s=' + PRIVATE.sixElementToken;
-    var getBinsUrl = 'https://6element.fr/bins/get/' + placeId +'?s=' + PRIVATE.sixElementToken;
+    var binSource = PRIVATE.binSource || 'https://6element.fr';
+
+    var setBinsUrl = binSource + '/bins/update/?s=' + PRIVATE.sixElementToken;
+    var getBinsUrl = binSource + '/bins/get/' + placeId +'?s=' + PRIVATE.sixElementToken;
 
     // These are what 6brain receives from 6bin server
     binServer.on('measurementRequest', function(request){
