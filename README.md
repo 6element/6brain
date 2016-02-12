@@ -4,12 +4,13 @@
 [6sense](https://github.com/anthill/6sense) for affluence data collection.
 [6bin](https://github.com/anthill/6bin) for user interface 
 
-Juste use `node index.js` to start everything. You should create a file called `PRIVATE.json` with this pattern:
+Juste use `node index.js` to start everything.
+
+You need to create the `PRIVATE` folder, and a file `PRIVATE/common.json` with this pattern:
 
 ```
 {
         "mqttToken": "zzzzzz", #token for mqtt auth
-        "id": "xxxxxxxxx", #id for auth
         "host":"xx.xx.xx.xx", #ip address of mqtt broker
         "port":... #for mqtt,
         "PIN": 0000
@@ -17,6 +18,7 @@ Juste use `node index.js` to start everything. You should create a file called `
 ```
 
 
+The `id` is located in `PRIVATE/id.json`, which is automatically created on first boot.
 
 ## Commands
 

@@ -18,7 +18,8 @@ var trajectoriesCodecOptions = {
 var BinServer = require('6bin').BinServer;
 var binServer = new BinServer(__dirname + '/node_modules/6bin');
 
-var PRIVATE = require('./PRIVATE.json');
+var PRIVATE = require('./PRIVATE/common.json');
+var id = require('./PRIVATE/id.json').id;
 
 
 // === to set ===
@@ -28,7 +29,6 @@ var SLEEP_HOUR_UTC = '16';
 var SSH_TIMEOUT = 20 * 1000;
 // ===
 
-var id = PRIVATE.id;
 var placeId;
 var sshProcess;
 var inited = false;

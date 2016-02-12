@@ -7,11 +7,9 @@ var fs = require('fs');
 var SP = require('serialport');
 var SerialPort = SP.SerialPort;
 
-var privatePath = path.join(__dirname, '..', 'PRIVATE.json');
+var privatePath = path.join(__dirname, '..', 'PRIVATE', 'id.json');
 var privateJson = require(privatePath);
 
-if (!privateJson)
-    throw new Error('Error in PRIVATE.json');
 if (!privateJson.id) {
 
     exec('ifconfig | grep eth0 | grep -Po "(?<=HWaddr )(.*)"', function (err, stdout) {

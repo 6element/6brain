@@ -1,6 +1,6 @@
 .DS_Store
 node_modules
-PRIVATE.json
+PRIVATE
 *.csv
 measurements.log
 npm-debug.log
