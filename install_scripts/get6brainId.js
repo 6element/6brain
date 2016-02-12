@@ -5,9 +5,12 @@ var path = require('path');
 var fs = require('fs');
 
 var privatePath = path.join(__dirname, '..', 'PRIVATE', 'id.json');
-var privateJson = require(privatePath);
+var privateJson = {};
 
-if (!privateJson.id) {
+try {
+    require(privatePath);
+}
+catch (e){
 
     exec('ifconfig | grep eth0 | grep -Po "(?<=HWaddr )(.*)"', function (err, stdout) {
         var id;
@@ -21,7 +24,9 @@ if (!privateJson.id) {
         console.log('ID :', id);
         privateJson.id = id;
 
-        fs.writeFile(privatePath, JSON.stringify(privateJson), function () {
+        fs.writeFile(privatePath, JSON.stringify(privateJson), function (error) {
+            if (error) console.log('error in writing id.json:', error);
+            
             var hostname = 'ant-' + id;
             exec('cat /etc/hosts | sed s/ant-xxx/' + hostname + '/ > /tmp/hosts.tmp && mv /tmp/hosts.tmp /etc/hosts', function() {
                 exec('hostnamectl set-hostname ' + hostname, function () {
