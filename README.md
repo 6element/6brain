@@ -10,10 +10,11 @@ You need to create the `PRIVATE` folder, and a file `PRIVATE/common.json` with t
 
 ```
 {
-        "mqttToken": "zzzzzz", #token for mqtt auth
-        "host":"xx.xx.xx.xx", #ip address of mqtt broker
-        "port":... #for mqtt,
-        "PIN": 0000
+        "mqttToken": "zzzzzz", // token for mqtt auth
+        "host":"xx.xx.xx.xx", // ip address of mqtt broker
+        "port":... //for mqtt,
+        "binSource": "myBinSource",
+        "sixElementToken": "zzzzzzzzzzzzz" // token for 6element access 
 }
 ```
 
