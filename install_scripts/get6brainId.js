@@ -4,9 +4,6 @@ var exec = require('child_process').exec;
 var path = require('path');
 var fs = require('fs');
 
-var SP = require('serialport');
-var SerialPort = SP.SerialPort;
-
 var privatePath = path.join(__dirname, '..', 'PRIVATE', 'id.json');
 var privateJson = require(privatePath);
 
