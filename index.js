@@ -203,7 +203,7 @@ function send(topic, message, options) {
 function openTunnel(queenPort, antPort, target) {
             
     return new Promise(function(resolve, reject){
-        var myProcess = spawn("ssh", ["-v", "-N", "-R", queenPort + ":localhost:" + antPort, target]);
+        var myProcess = spawn("ssh", ["-v", "-N", "-o", "StrictHostKeyChecking=no" "-R", queenPort + ":localhost:" + antPort, target]);
         debug("nodeprocess :", myProcess.pid, "myProcess: ", process.pid);
         myProcess.stderr.on("data", function(chunkBuffer){
             var message = chunkBuffer.toString();
